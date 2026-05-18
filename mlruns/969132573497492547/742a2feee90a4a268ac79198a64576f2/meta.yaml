@@ -1,0 +1,14 @@
+artifact_uri: file:///c:/Proyectos_Git/Proyecto2_ACTD/mlruns/969132573497492547/742a2feee90a4a268ac79198a64576f2/artifacts
+end_time: 1778796472260
+entry_point_name: ''
+experiment_id: '969132573497492547'
+lifecycle_stage: active
+run_id: 742a2feee90a4a268ac79198a64576f2
+run_name: clf_multi_RandomForestClassifier_tic_contexto
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1778796472121
+status: 4
+tags: []
+user_id: aleja

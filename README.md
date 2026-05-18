@@ -82,4 +82,16 @@ Accesibilidad: IP Pública configurada en el puerto 8050.
 	- `pregunta_3.py`: Página interactiva para la pregunta 3.
 	- `__pycache__/`: Caché de páginas compiladas.
 
+## MLflow (Pregunta 3)
+
+- Tracking store por defecto: `./mlruns` (carpeta dentro del repositorio).
+- Para abrir la UI en local:
+	- `mlflow ui --backend-store-uri ./mlruns`
+	- `http://127.0.0.1:5000`
+
+Variables de entorno utiles (local, Docker o AWS):
+
+- `MLFLOW_TRACKING_URI`: URI del tracking store (ej. `file:///C:/ruta/proyecto/mlruns` o `http://mlflow:5000`).
+- `MLFLOW_UI_URL`: URL visible de la UI para el link dentro del dashboard.
+
 FIN

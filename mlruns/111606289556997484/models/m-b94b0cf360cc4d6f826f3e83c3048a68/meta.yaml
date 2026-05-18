@@ -1,0 +1,10 @@
+artifact_location: file:///c:/Proyectos_Git/Proyecto2_ACTD/mlruns/111606289556997484/models/m-b94b0cf360cc4d6f826f3e83c3048a68/artifacts
+creation_timestamp: 1778796413374
+experiment_id: '111606289556997484'
+last_updated_timestamp: 1778796417236
+model_id: m-b94b0cf360cc4d6f826f3e83c3048a68
+model_type: null
+name: model
+source_run_id: 8e394f52359f4218b97fc438d0459534
+status: 2
+status_message: null

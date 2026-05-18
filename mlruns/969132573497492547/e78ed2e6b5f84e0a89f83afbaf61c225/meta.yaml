@@ -1,0 +1,14 @@
+artifact_uri: file:///c:/Proyectos_Git/Proyecto2_ACTD/mlruns/969132573497492547/e78ed2e6b5f84e0a89f83afbaf61c225/artifacts
+end_time: 1778796472598
+entry_point_name: ''
+experiment_id: '969132573497492547'
+lifecycle_stage: active
+run_id: e78ed2e6b5f84e0a89f83afbaf61c225
+run_name: clf_multi_LogisticRegression_tic_contexto_municipio
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1778796472490
+status: 4
+tags: []
+user_id: aleja

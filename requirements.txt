@@ -4,3 +4,6 @@ plotly
 dash-bootstrap-components
 scipy
 statsmodels
+numpy
+scikit-learn
+mlflow
