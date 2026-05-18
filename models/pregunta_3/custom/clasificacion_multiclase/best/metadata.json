@@ -1,0 +1,40 @@
+{
+  "task": "clasificacion_multiclase",
+  "config": {
+    "name": "mlp_multi_1",
+    "layers": "64-32",
+    "activation": "relu",
+    "dropout": 0.2,
+    "l2": 0.0001,
+    "optimizer": "adam",
+    "learning_rate": 0.001,
+    "loss": "categorical_crossentropy",
+    "epochs": 40,
+    "batch_size": 64
+  },
+  "metrics": {
+    "accuracy": 0.537,
+    "f1_macro": 0.33496930989131585,
+    "log_loss": 1.057687362851394
+  },
+  "feature_columns": [
+    "internet_flag",
+    "computador_flag",
+    "tic_score",
+    "tic_interaccion",
+    "bilingue_flag",
+    "estrato_cat",
+    "tipo_colegio",
+    "genero",
+    "edu_padre",
+    "edu_madre"
+  ],
+  "label_mapping": [
+    "A-",
+    "A1",
+    "A2",
+    "B+",
+    "B1"
+  ],
+  "trained_at": "2026-05-18 21:56:51"
+}

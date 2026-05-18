@@ -1,0 +1,34 @@
+{
+  "task": "clasificacion_binaria",
+  "config": {
+    "name": "mlp_bin_2",
+    "layers": "128-64-32",
+    "activation": "elu",
+    "dropout": 0.3,
+    "l2": 0.0001,
+    "optimizer": "rmsprop",
+    "learning_rate": 0.0005,
+    "loss": "binary_crossentropy",
+    "epochs": 60,
+    "batch_size": 128
+  },
+  "metrics": {
+    "accuracy": 0.9205,
+    "f1": 0.45733788395904434,
+    "roc_auc": 0.8737427361258577
+  },
+  "feature_columns": [
+    "internet_flag",
+    "computador_flag",
+    "tic_score",
+    "tic_interaccion",
+    "bilingue_flag",
+    "estrato_cat",
+    "tipo_colegio",
+    "genero",
+    "edu_padre",
+    "edu_madre"
+  ],
+  "label_mapping": null,
+  "trained_at": "2026-05-18 21:56:08"
+}

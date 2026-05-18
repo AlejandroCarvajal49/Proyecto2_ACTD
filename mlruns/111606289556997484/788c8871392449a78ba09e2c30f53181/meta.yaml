@@ -1,0 +1,14 @@
+artifact_uri: file:///c:/Proyectos_Git/Proyecto2_ACTD/mlruns/111606289556997484/788c8871392449a78ba09e2c30f53181/artifacts
+end_time: 1779119654117
+entry_point_name: ''
+experiment_id: '111606289556997484'
+lifecycle_stage: active
+run_id: 788c8871392449a78ba09e2c30f53181
+run_name: reg_RandomForestRegressor_tic_contexto_municipio
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1779119654018
+status: 4
+tags: []
+user_id: aleja

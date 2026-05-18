@@ -1,0 +1,14 @@
+artifact_uri: file:///c:/Proyectos_Git/Proyecto2_ACTD/mlruns/603419503450813820/7530bdfbcf0c4184824b56643be55421/artifacts
+end_time: 1779119668142
+entry_point_name: ''
+experiment_id: '603419503450813820'
+lifecycle_stage: active
+run_id: 7530bdfbcf0c4184824b56643be55421
+run_name: clf_bin_LogisticRegression_tic_contexto
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1779119668041
+status: 4
+tags: []
+user_id: aleja

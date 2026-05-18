@@ -7,3 +7,5 @@ statsmodels
 numpy
 scikit-learn
 mlflow
+joblib
+tensorflow

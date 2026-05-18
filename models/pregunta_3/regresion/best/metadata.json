@@ -1,0 +1,28 @@
+{
+  "task": "regresion",
+  "config": {
+    "name": "mlp_reg_mse",
+    "layers": "64-32",
+    "activation": "relu",
+    "dropout": 0.1,
+    "l2": 0.0001,
+    "optimizer": "adam",
+    "learning_rate": 0.001,
+    "loss": "mse",
+    "epochs": 40,
+    "batch_size": 64
+  },
+  "metrics": {
+    "rmse": 11.811446520819299,
+    "mae": 8.96932638168335,
+    "r2": 0.12708483329746945
+  },
+  "feature_columns": [
+    "internet_flag",
+    "computador_flag",
+    "tic_score",
+    "tic_interaccion"
+  ],
+  "label_mapping": null,
+  "trained_at": "2026-05-18 16:21:50"
+}

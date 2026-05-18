@@ -1,0 +1,14 @@
+artifact_uri: file:///c:/Proyectos_Git/Proyecto2_ACTD/mlruns/111606289556997484/7ffe5d4befde48e9b63b40e5eb14337e/artifacts
+end_time: 1779119635778
+entry_point_name: ''
+experiment_id: '111606289556997484'
+lifecycle_stage: active
+run_id: 7ffe5d4befde48e9b63b40e5eb14337e
+run_name: reg_LinearRegression_tic_basico
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1779119624484
+status: 3
+tags: []
+user_id: aleja

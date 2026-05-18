@@ -1,0 +1,28 @@
+{
+  "task": "clasificacion_binaria",
+  "config": {
+    "name": "mlp_bin_1",
+    "layers": "64-32",
+    "activation": "relu",
+    "dropout": 0.2,
+    "l2": 0.0001,
+    "optimizer": "adam",
+    "learning_rate": 0.001,
+    "loss": "binary_crossentropy",
+    "epochs": 40,
+    "batch_size": 64
+  },
+  "metrics": {
+    "accuracy": 0.903,
+    "f1": 0.0,
+    "roc_auc": 0.7041937099702025
+  },
+  "feature_columns": [
+    "internet_flag",
+    "computador_flag",
+    "tic_score",
+    "tic_interaccion"
+  ],
+  "label_mapping": null,
+  "trained_at": "2026-05-18 16:22:06"
+}

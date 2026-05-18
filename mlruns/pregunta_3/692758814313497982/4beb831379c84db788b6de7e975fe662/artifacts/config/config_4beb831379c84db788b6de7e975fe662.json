@@ -1,0 +1,12 @@
+{
+  "name": "mlp_reg_huber_sgd",
+  "layers": "64-32",
+  "activation": "relu",
+  "dropout": 0.1,
+  "l2": 0.001,
+  "optimizer": "sgd",
+  "learning_rate": 0.005,
+  "loss": "huber",
+  "epochs": 60,
+  "batch_size": 64
+}

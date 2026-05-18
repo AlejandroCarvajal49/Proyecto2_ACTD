@@ -84,14 +84,30 @@ Accesibilidad: IP Pública configurada en el puerto 8050.
 
 ## MLflow (Pregunta 3)
 
-- Tracking store por defecto: `./mlruns` (carpeta dentro del repositorio).
+- Tracking store por defecto: `./mlruns/pregunta_3` (carpeta dentro del repositorio).
 - Para abrir la UI en local:
-	- `mlflow ui --backend-store-uri ./mlruns`
+	- `mlflow ui --backend-store-uri ./mlruns/pregunta_3`
 	- `http://127.0.0.1:5000`
+
+### Flujo recomendado
+
+1. Iniciar MLflow UI con el comando anterior.
+2. Entrenar modelos fuera del dashboard (script/entrenamiento local).
+3. En el dashboard de la Pregunta 3, hacer clic en **CARGAR RESULTADOS MLflow**.
+4. Comparar las corridas en MLflow (metrics, parametros, artifacts).
+5. Revisar los mejores modelos en la tabla del dashboard.
+
+### Persistencia de modelos
+
+- Los modelos y preprocesadores se guardan en `models/pregunta_3/`.
+- Estructura esperada:
+	- `models/pregunta_3/regresion/best/`
+	- `models/pregunta_3/clasificacion_binaria/best/`
+	- `models/pregunta_3/clasificacion_multiclase/best/`
 
 Variables de entorno utiles (local, Docker o AWS):
 
-- `MLFLOW_TRACKING_URI`: URI del tracking store (ej. `file:///C:/ruta/proyecto/mlruns` o `http://mlflow:5000`).
+- `MLFLOW_TRACKING_URI`: URI del tracking store (ej. `file:///C:/ruta/proyecto/mlruns/pregunta_3` o `http://mlflow:5000`).
 - `MLFLOW_UI_URL`: URL visible de la UI para el link dentro del dashboard.
 
 FIN

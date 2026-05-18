@@ -1,0 +1,14 @@
+artifact_uri: file:///c:/Proyectos_Git/Proyecto2_ACTD/mlruns/603419503450813820/aa4bcd6b66ac4affa03a902378c3d43e/artifacts
+end_time: 1779119668724
+entry_point_name: ''
+experiment_id: '603419503450813820'
+lifecycle_stage: active
+run_id: aa4bcd6b66ac4affa03a902378c3d43e
+run_name: clf_bin_GradientBoostingClassifier_tic_contexto_municipio
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1779119668624
+status: 4
+tags: []
+user_id: aleja

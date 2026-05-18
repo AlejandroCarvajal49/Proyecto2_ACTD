@@ -1,0 +1,14 @@
+artifact_uri: file:///c:/Proyectos_Git/Proyecto2_ACTD/mlruns/111606289556997484/fe9bad08881447deb0e43170576e970a/artifacts
+end_time: 1779119653752
+entry_point_name: ''
+experiment_id: '111606289556997484'
+lifecycle_stage: active
+run_id: fe9bad08881447deb0e43170576e970a
+run_name: reg_LinearRegression_tic_contexto_municipio
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1779119653667
+status: 4
+tags: []
+user_id: aleja

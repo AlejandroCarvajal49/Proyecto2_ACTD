@@ -1,0 +1,14 @@
+artifact_uri: file:///c:/Proyectos_Git/Proyecto2_ACTD/mlruns/111606289556997484/64e2094e90da41f780a9acb158ebf880/artifacts
+end_time: 1779119653362
+entry_point_name: ''
+experiment_id: '111606289556997484'
+lifecycle_stage: active
+run_id: 64e2094e90da41f780a9acb158ebf880
+run_name: reg_Lasso_tic_contexto
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1779119653235
+status: 4
+tags: []
+user_id: aleja

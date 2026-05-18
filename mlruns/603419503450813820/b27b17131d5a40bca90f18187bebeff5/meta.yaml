@@ -1,0 +1,14 @@
+artifact_uri: file:///c:/Proyectos_Git/Proyecto2_ACTD/mlruns/603419503450813820/b27b17131d5a40bca90f18187bebeff5/artifacts
+end_time: 1779119668615
+entry_point_name: ''
+experiment_id: '603419503450813820'
+lifecycle_stage: active
+run_id: b27b17131d5a40bca90f18187bebeff5
+run_name: clf_bin_RandomForestClassifier_tic_contexto_municipio
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1779119668511
+status: 4
+tags: []
+user_id: aleja

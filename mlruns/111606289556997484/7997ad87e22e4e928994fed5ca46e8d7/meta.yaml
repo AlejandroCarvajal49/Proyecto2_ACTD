@@ -1,0 +1,14 @@
+artifact_uri: file:///c:/Proyectos_Git/Proyecto2_ACTD/mlruns/111606289556997484/7997ad87e22e4e928994fed5ca46e8d7/artifacts
+end_time: 1779119653882
+entry_point_name: ''
+experiment_id: '111606289556997484'
+lifecycle_stage: active
+run_id: 7997ad87e22e4e928994fed5ca46e8d7
+run_name: reg_Ridge_tic_contexto_municipio
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1779119653774
+status: 4
+tags: []
+user_id: aleja
