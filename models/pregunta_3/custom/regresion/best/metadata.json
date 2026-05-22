@@ -13,9 +13,9 @@
     "batch_size": 64
   },
   "metrics": {
-    "rmse": 10.24718129895636,
-    "mae": 7.86434433555603,
-    "r2": 0.3429858793249356
+    "rmse": 10.777218291753142,
+    "mae": 8.238046670913697,
+    "r2": 0.27325973556769745
   },
   "feature_columns": [
     "internet_flag",
@@ -23,12 +23,8 @@
     "tic_score",
     "tic_interaccion",
     "bilingue_flag",
-    "estrato_cat",
-    "tipo_colegio",
-    "genero",
-    "edu_padre",
-    "edu_madre"
+    "estrato_cat"
   ],
   "label_mapping": null,
-  "trained_at": "2026-05-18 21:55:36"
+  "trained_at": "2026-05-22 21:22:41"
 }

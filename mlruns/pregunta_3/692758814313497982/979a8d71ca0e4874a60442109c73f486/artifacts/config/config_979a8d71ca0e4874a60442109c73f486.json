@@ -1,0 +1,12 @@
+{
+  "name": "mlp_reg_huber",
+  "layers": "128-64-32",
+  "activation": "relu",
+  "dropout": 0.2,
+  "l2": 0.001,
+  "optimizer": "rmsprop",
+  "learning_rate": 0.0005,
+  "loss": "huber",
+  "epochs": 60,
+  "batch_size": 128
+}

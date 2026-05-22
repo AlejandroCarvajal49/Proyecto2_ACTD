@@ -13,9 +13,9 @@
     "batch_size": 64
   },
   "metrics": {
-    "accuracy": 0.537,
-    "f1_macro": 0.33496930989131585,
-    "log_loss": 1.057687362851394
+    "accuracy": 0.52375,
+    "f1_macro": 0.3086370783815551,
+    "log_loss": 1.1027481562917127
   },
   "feature_columns": [
     "internet_flag",
@@ -23,11 +23,7 @@
     "tic_score",
     "tic_interaccion",
     "bilingue_flag",
-    "estrato_cat",
-    "tipo_colegio",
-    "genero",
-    "edu_padre",
-    "edu_madre"
+    "estrato_cat"
   ],
   "label_mapping": [
     "A-",
@@ -36,5 +32,5 @@
     "B+",
     "B1"
   ],
-  "trained_at": "2026-05-18 21:56:51"
+  "trained_at": "2026-05-22 21:24:12"
 }

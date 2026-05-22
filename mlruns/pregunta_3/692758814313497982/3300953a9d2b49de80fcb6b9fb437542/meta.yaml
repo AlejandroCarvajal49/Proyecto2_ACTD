@@ -1,0 +1,14 @@
+artifact_uri: file:///c:/Proyectos_Git/Proyecto2_ACTD/mlruns/pregunta_3/692758814313497982/3300953a9d2b49de80fcb6b9fb437542/artifacts
+end_time: 1779484986283
+entry_point_name: ''
+experiment_id: '692758814313497982'
+lifecycle_stage: active
+run_id: 3300953a9d2b49de80fcb6b9fb437542
+run_name: p3_custom_reg_5
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1779484983146
+status: 3
+tags: []
+user_id: aleja

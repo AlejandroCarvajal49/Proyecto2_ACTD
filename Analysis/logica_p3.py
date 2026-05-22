@@ -1486,29 +1486,39 @@ def cargar_modelos_p3():
         return {"disponible": False, "error": f"Dependencias no disponibles ({exc})."}
 
     base_dir = _p3_models_dir()
-    tasks = {
-        "regresion": os.path.join(base_dir, "regresion", "best"),
-        "clasificacion_binaria": os.path.join(base_dir, "clasificacion_binaria", "best"),
-        "clasificacion_multiclase": os.path.join(base_dir, "clasificacion_multiclase", "best"),
-    }
+    custom_dir = os.path.join(base_dir, "custom")
+    tasks = ["regresion", "clasificacion_binaria", "clasificacion_multiclase"]
 
     artefactos = {"disponible": True, "error": None}
-    for task, task_dir in tasks.items():
-        model_path = os.path.join(task_dir, "model.keras")
-        preproc_path = os.path.join(task_dir, "preprocessor.pkl")
-        metadata_path = os.path.join(task_dir, "metadata.json")
 
-        if not os.path.exists(model_path) or not os.path.exists(preproc_path) or not os.path.exists(metadata_path):
+    for task in tasks:
+        candidatos = [
+            ("custom", os.path.join(custom_dir, task, "best")),
+            ("base", os.path.join(base_dir, task, "best")),
+        ]
+
+        seleccionado = None
+        for source, task_dir in candidatos:
+            model_path = os.path.join(task_dir, "model.keras")
+            preproc_path = os.path.join(task_dir, "preprocessor.pkl")
+            metadata_path = os.path.join(task_dir, "metadata.json")
+            if os.path.exists(model_path) and os.path.exists(preproc_path) and os.path.exists(metadata_path):
+                seleccionado = (source, model_path, preproc_path, metadata_path)
+                break
+
+        if seleccionado is None:
             artefactos["disponible"] = False
             artefactos["error"] = (
                 "Modelos de Pregunta 3 no encontrados. Entrena modelos desde el panel de variables."
             )
             return artefactos
 
+        source, model_path, preproc_path, metadata_path = seleccionado
         artefactos[task] = {
             "model": tf.keras.models.load_model(model_path),
             "preprocessor": joblib.load(preproc_path),
             "metadata": json.load(open(metadata_path, "r", encoding="utf-8")),
+            "source": source,
         }
 
     return artefactos
@@ -2885,7 +2895,7 @@ def entrenar_modelos_p3_personalizados(df, variables, max_rows=20000, random_sta
 def predecir_escenarios_p3(valores_a, valores_b):
     artefactos = cargar_modelos_p3()
     if not artefactos.get("disponible"):
-        return None, None, None, artefactos.get("error")
+        return None, None, None, None, artefactos.get("error")
 
     def _pred_uno(valores):
         df_input = construir_input_p3(valores)
@@ -2912,31 +2922,47 @@ def predecir_escenarios_p3(valores_a, valores_b):
 
     pred_a = _pred_uno(valores_a)
     pred_b = _pred_uno(valores_b)
-    fig = grafica_comparacion_escenarios(pred_a, pred_b)
-    return pred_a, pred_b, fig, None
+    fig_reg, fig_clf = grafica_comparacion_escenarios(pred_a, pred_b)
+    return pred_a, pred_b, fig_reg, fig_clf, None
 
 
 def grafica_comparacion_escenarios(pred_a, pred_b):
     if not pred_a or not pred_b:
-        return go.Figure().update_layout(title="Modelos no disponibles")
+        empty = go.Figure().update_layout(title="Modelos no disponibles")
+        return empty, empty
 
-    df_plot = pd.DataFrame(
+    df_reg = pd.DataFrame(
         {
             "Escenario": ["A", "B"],
             "Puntaje Ingles": [pred_a["puntaje"], pred_b["puntaje"]],
-            "Probabilidad B1+": [pred_a["proba_b1"], pred_b["proba_b1"]],
         }
     )
-
-    fig = px.bar(
-        df_plot,
+    fig_reg = px.bar(
+        df_reg,
         x="Escenario",
-        y=["Puntaje Ingles", "Probabilidad B1+"],
-        barmode="group",
-        title="Comparacion de escenarios (puntaje y probabilidad)",
+        y="Puntaje Ingles",
+        title="Comparacion de escenarios - Regresion (puntaje ingles)",
+        labels={"Puntaje Ingles": "Puntaje Ingles"},
     )
-    fig.update_layout(margin={"r": 10, "t": 40, "l": 10, "b": 10})
-    return fig
+
+    df_clf = pd.DataFrame(
+        {
+            "Escenario": ["A", "B"],
+            "Probabilidad B1+ (%)": [pred_a["proba_b1"] * 100, pred_b["proba_b1"] * 100],
+        }
+    )
+    fig_clf = px.bar(
+        df_clf,
+        x="Escenario",
+        y="Probabilidad B1+ (%)",
+        title="Comparacion de escenarios - Clasificacion (B1+)",
+        labels={"Probabilidad B1+ (%)": "Probabilidad B1+ (%)"},
+    )
+
+    for fig in [fig_reg, fig_clf]:
+        fig.update_layout(margin={"r": 10, "t": 40, "l": 10, "b": 10})
+
+    return fig_reg, fig_clf
 
 
 def analizar_significancia_ols(df, variables_seleccionadas, sample_rows=20000):
@@ -2945,145 +2971,156 @@ def analizar_significancia_ols(df, variables_seleccionadas, sample_rows=20000):
     except Exception as exc:
         return {}, pd.DataFrame(), pd.DataFrame(), f"Statsmodels no disponible ({exc})."
 
-    dff = _build_modeling_frame(df)
-    if dff.empty or "punt_ingles" not in dff.columns:
-        return {}, pd.DataFrame(), pd.DataFrame(), "No hay datos para regresion."
+    try:
+        dff = _build_modeling_frame(df)
+        if dff.empty or "punt_ingles" not in dff.columns:
+            return {}, pd.DataFrame(), pd.DataFrame(), "No hay datos para regresion."
 
-    y = pd.to_numeric(dff["punt_ingles"], errors="coerce")
-    dff = dff.loc[y.notna()].copy()
-    y = y.loc[y.notna()]
+        y = pd.to_numeric(dff["punt_ingles"], errors="coerce")
+        dff = dff.loc[y.notna()].copy()
+        y = y.loc[y.notna()]
 
-    if sample_rows and len(dff) > sample_rows:
-        dff = dff.sample(n=sample_rows, random_state=42)
-        y = y.loc[dff.index]
+        if sample_rows and len(dff) > sample_rows:
+            dff = dff.sample(n=sample_rows, random_state=42)
+            y = y.loc[dff.index]
 
-    numeric_vars = [
-        v for v in ["internet_flag", "computador_flag", "tic_score", "tic_interaccion", "bilingue_flag"]
-        if v in dff.columns
-    ]
-    categorical_vars = [
-        v for v in ["estrato_cat", "zona", "tipo_colegio", "jornada", "genero", "edu_padre", "edu_madre"]
-        if v in dff.columns
-    ]
+        numeric_vars = [
+            v for v in ["internet_flag", "computador_flag", "tic_score", "tic_interaccion", "bilingue_flag"]
+            if v in dff.columns
+        ]
+        categorical_vars = [
+            v for v in ["estrato_cat", "zona", "tipo_colegio", "jornada", "genero", "edu_padre", "edu_madre"]
+            if v in dff.columns
+        ]
 
-    dff = _coerce_numeric_columns(dff, numeric_vars)
-    for col in numeric_vars:
-        dff[col] = dff[col].fillna(dff[col].median())
+        dff = _coerce_numeric_columns(dff, numeric_vars)
+        for col in numeric_vars:
+            dff[col] = dff[col].fillna(dff[col].median())
 
-    for col in categorical_vars:
-        dff[col] = dff[col].astype("string").fillna("SIN_INFO")
+        for col in categorical_vars:
+            dff[col] = dff[col].astype("string").fillna("SIN_INFO")
 
-    X_num = dff[numeric_vars]
-    X_cat = pd.get_dummies(
-        dff[categorical_vars],
-        prefix=categorical_vars,
-        prefix_sep="__",
-        drop_first=True,
-    ) if categorical_vars else pd.DataFrame(index=dff.index)
+        X_num = dff[numeric_vars]
+        X_cat = pd.get_dummies(
+            dff[categorical_vars],
+            prefix=categorical_vars,
+            prefix_sep="__",
+            drop_first=True,
+        ) if categorical_vars else pd.DataFrame(index=dff.index)
 
-    X_full = pd.concat([X_num, X_cat], axis=1)
-    X_full = X_full.loc[y.index]
+        X_full = pd.concat([X_num, X_cat], axis=1)
+        X_full = X_full.loc[y.index]
+        X_full = X_full.apply(pd.to_numeric, errors="coerce").fillna(0.0)
+        X_full = X_full.astype(float)
+        y = pd.to_numeric(y, errors="coerce").astype(float)
 
-    model_full = sm.OLS(y, sm.add_constant(X_full)).fit()
+        if X_full.empty or y.isna().all():
+            return {}, pd.DataFrame(), pd.DataFrame(), "No hay datos numericos suficientes para OLS."
 
-    # Map variable -> columns in design matrix
-    group_map = {}
-    for var in numeric_vars:
-        if var in X_full.columns:
-            group_map[var] = [var]
-    for var in categorical_vars:
-        prefix = f"{var}__"
-        group_cols = [c for c in X_full.columns if c.startswith(prefix)]
-        if group_cols:
-            group_map[var] = group_cols
+        model_full = sm.OLS(y, sm.add_constant(X_full)).fit()
 
-    # Selected model
-    selected_vars = variables_seleccionadas or []
-    selected_cols = []
-    for var in selected_vars:
-        selected_cols.extend(group_map.get(var, []))
-    selected_cols = list(dict.fromkeys(selected_cols))
-    if not selected_cols:
-        return {}, pd.DataFrame(), pd.DataFrame(), "Selecciona al menos una variable independiente."
+        # Map variable -> columns in design matrix
+        group_map = {}
+        for var in numeric_vars:
+            if var in X_full.columns:
+                group_map[var] = [var]
+        for var in categorical_vars:
+            prefix = f"{var}__"
+            group_cols = [c for c in X_full.columns if c.startswith(prefix)]
+            if group_cols:
+                group_map[var] = group_cols
 
-    X_sel = X_full[selected_cols]
-    model_sel = sm.OLS(y, sm.add_constant(X_sel)).fit()
+        # Selected model
+        selected_vars = variables_seleccionadas or []
+        selected_cols = []
+        for var in selected_vars:
+            selected_cols.extend(group_map.get(var, []))
+        selected_cols = list(dict.fromkeys(selected_cols))
+        if not selected_cols:
+            return {}, pd.DataFrame(), pd.DataFrame(), "Selecciona al menos una variable independiente."
 
-    resumen = {
-        "n_obs": int(model_sel.nobs),
-        "r2": float(model_sel.rsquared),
-        "adj_r2": float(model_sel.rsquared_adj),
-    }
+        X_sel = X_full[selected_cols]
+        X_sel = X_sel.apply(pd.to_numeric, errors="coerce").fillna(0.0)
+        X_sel = X_sel.astype(float)
+        model_sel = sm.OLS(y, sm.add_constant(X_sel)).fit()
 
-    # T-test for numeric variables included
-    ttest_rows = []
-    for var in numeric_vars:
-        if var not in selected_vars:
-            continue
-        if var not in model_sel.params:
-            continue
-        ttest_rows.append(
-            {
-                "variable": var,
-                "coef": float(model_sel.params[var]),
-                "t_stat": float(model_sel.tvalues[var]),
-                "p_value": float(model_sel.pvalues[var]),
-                "significativa": "Si" if model_sel.pvalues[var] < 0.05 else "No",
-            }
-        )
-    ttest_df = pd.DataFrame(ttest_rows)
+        resumen = {
+            "n_obs": int(model_sel.nobs),
+            "r2": float(model_sel.rsquared),
+            "adj_r2": float(model_sel.rsquared_adj),
+        }
 
-    # F-test for each variable group and combinations (full model)
-    ftest_rows = []
-    exog_names = model_full.model.exog_names
-    group_items = list(group_map.items())
+        # T-test for numeric variables included
+        ttest_rows = []
+        for var in numeric_vars:
+            if var not in selected_vars:
+                continue
+            if var not in model_sel.params:
+                continue
+            ttest_rows.append(
+                {
+                    "variable": var,
+                    "coef": float(model_sel.params[var]),
+                    "t_stat": float(model_sel.tvalues[var]),
+                    "p_value": float(model_sel.pvalues[var]),
+                    "significativa": "Si" if model_sel.pvalues[var] < 0.05 else "No",
+                }
+            )
+        ttest_df = pd.DataFrame(ttest_rows)
 
-    def _f_test_for_columns(cols):
-        idx = [exog_names.index(col) for col in cols if col in exog_names]
-        if not idx:
-            return None
-        r_matrix = np.zeros((len(idx), len(exog_names)))
-        for i, col_idx in enumerate(idx):
-            r_matrix[i, col_idx] = 1
-        try:
-            return float(model_full.f_test(r_matrix).pvalue)
-        except Exception:
-            return None
+        # F-test for each variable group and combinations (full model)
+        ftest_rows = []
+        exog_names = model_full.model.exog_names
+        group_items = list(group_map.items())
 
-    # Individual variables
-    for var, cols in group_items:
-        if not cols:
-            continue
-        p_val = _f_test_for_columns(cols)
-        ftest_rows.append(
-            {
-                "variable": var,
-                "p_value": p_val,
-                "incluida": "Si" if var in selected_vars else "No",
-                "significativa": "Si" if p_val is not None and p_val < 0.05 else "No",
-            }
-        )
+        def _f_test_for_columns(cols):
+            idx = [exog_names.index(col) for col in cols if col in exog_names]
+            if not idx:
+                return None
+            r_matrix = np.zeros((len(idx), len(exog_names)))
+            for i, col_idx in enumerate(idx):
+                r_matrix[i, col_idx] = 1
+            try:
+                return float(model_full.f_test(r_matrix).pvalue)
+            except Exception:
+                return None
 
-    # All combinations from selected variables (2..N)
-    comb_vars = [var for var in selected_vars if var in group_map]
-    if len(comb_vars) >= 2:
-        for k in range(2, len(comb_vars) + 1):
-            for combo in itertools.combinations(comb_vars, k):
-                combo_cols = []
-                for var in combo:
-                    combo_cols.extend(group_map.get(var, []))
-                p_val = _f_test_for_columns(combo_cols)
-                ftest_rows.append(
-                    {
-                        "variable": " + ".join(combo),
-                        "p_value": p_val,
-                        "incluida": "Si",
-                        "significativa": "Si" if p_val is not None and p_val < 0.05 else "No",
-                    }
-                )
+        # Individual variables
+        for var, cols in group_items:
+            if not cols:
+                continue
+            p_val = _f_test_for_columns(cols)
+            ftest_rows.append(
+                {
+                    "variable": var,
+                    "p_value": p_val,
+                    "incluida": "Si" if var in selected_vars else "No",
+                    "significativa": "Si" if p_val is not None and p_val < 0.05 else "No",
+                }
+            )
 
-    ftest_df = pd.DataFrame(ftest_rows)
-    mensaje = "Analisis OLS listo."
-    if ttest_df.empty:
-        mensaje = "No hay variables numericas seleccionadas para pruebas t."
-    return resumen, ttest_df, ftest_df, mensaje
+        # All combinations from selected variables (2..N)
+        comb_vars = [var for var in selected_vars if var in group_map]
+        if len(comb_vars) >= 2:
+            for k in range(2, len(comb_vars) + 1):
+                for combo in itertools.combinations(comb_vars, k):
+                    combo_cols = []
+                    for var in combo:
+                        combo_cols.extend(group_map.get(var, []))
+                    p_val = _f_test_for_columns(combo_cols)
+                    ftest_rows.append(
+                        {
+                            "variable": " + ".join(combo),
+                            "p_value": p_val,
+                            "incluida": "Si",
+                            "significativa": "Si" if p_val is not None and p_val < 0.05 else "No",
+                        }
+                    )
+
+        ftest_df = pd.DataFrame(ftest_rows)
+        mensaje = "Analisis OLS listo."
+        if ttest_df.empty:
+            mensaje = "No hay variables numericas seleccionadas para pruebas t."
+        return resumen, ttest_df, ftest_df, mensaje
+    except Exception as exc:
+        return {}, pd.DataFrame(), pd.DataFrame(), f"No se pudo calcular significancia ({exc})."

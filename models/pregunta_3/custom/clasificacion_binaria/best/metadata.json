@@ -1,21 +1,21 @@
 {
   "task": "clasificacion_binaria",
   "config": {
-    "name": "mlp_bin_2",
-    "layers": "128-64-32",
-    "activation": "elu",
-    "dropout": 0.3,
-    "l2": 0.0001,
-    "optimizer": "rmsprop",
-    "learning_rate": 0.0005,
+    "name": "mlp_bin_3",
+    "layers": "32-16",
+    "activation": "relu",
+    "dropout": 0.1,
+    "l2": 0.001,
+    "optimizer": "sgd",
+    "learning_rate": 0.01,
     "loss": "binary_crossentropy",
-    "epochs": 60,
-    "batch_size": 128
+    "epochs": 50,
+    "batch_size": 32
   },
   "metrics": {
-    "accuracy": 0.9205,
-    "f1": 0.45733788395904434,
-    "roc_auc": 0.8737427361258577
+    "accuracy": 0.91625,
+    "f1": 0.3830570902394107,
+    "roc_auc": 0.8280199307006427
   },
   "feature_columns": [
     "internet_flag",
@@ -23,12 +23,8 @@
     "tic_score",
     "tic_interaccion",
     "bilingue_flag",
-    "estrato_cat",
-    "tipo_colegio",
-    "genero",
-    "edu_padre",
-    "edu_madre"
+    "estrato_cat"
   ],
   "label_mapping": null,
-  "trained_at": "2026-05-18 21:56:08"
+  "trained_at": "2026-05-22 21:23:41"
 }

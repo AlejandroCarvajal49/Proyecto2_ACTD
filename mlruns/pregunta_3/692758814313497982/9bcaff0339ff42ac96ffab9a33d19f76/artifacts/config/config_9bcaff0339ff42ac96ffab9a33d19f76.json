@@ -1,0 +1,12 @@
+{
+  "name": "mlp_multi_3",
+  "layers": "64-32",
+  "activation": "tanh",
+  "dropout": 0.1,
+  "l2": 0.001,
+  "optimizer": "sgd",
+  "learning_rate": 0.01,
+  "loss": "categorical_crossentropy",
+  "epochs": 50,
+  "batch_size": 64
+}

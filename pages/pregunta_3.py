@@ -352,7 +352,10 @@ Como se distribuye el nivel de desempeno en ingles (A-, A1, A2, B1, B+) a lo lar
                 ], md=4),
             ], className="mb-3"),
 
-            dcc.Graph(id="grafica-escenarios", figure=go.Figure()),
+            dbc.Row([
+                dbc.Col(dcc.Graph(id="grafica-escenarios-reg", figure=go.Figure()), md=6),
+                dbc.Col(dcc.Graph(id="grafica-escenarios-clf", figure=go.Figure()), md=6),
+            ]),
         ])
     ], className="mb-4 shadow-sm"),
 
@@ -561,7 +564,8 @@ def actualizar_estado_mlflow(n_clicks_iniciar, n_clicks_cargar):
         Output("out-nivel-b", "children"),
         Output("out-delta-puntaje", "children"),
         Output("out-delta-proba", "children"),
-        Output("grafica-escenarios", "figure"),
+        Output("grafica-escenarios-reg", "figure"),
+        Output("grafica-escenarios-clf", "figure"),
         Output("alerta-modelos-p3", "children"),
         Output("alerta-modelos-p3", "is_open"),
     ],
@@ -626,6 +630,7 @@ def simular_escenarios(
             no_update,
             no_update,
             no_update,
+            no_update,
         )
 
     valores_a = {
@@ -653,7 +658,7 @@ def simular_escenarios(
         "edu_madre": b_edu_madre,
     }
 
-    pred_a, pred_b, fig, error = predecir_escenarios_p3(valores_a, valores_b)
+    pred_a, pred_b, fig_reg, fig_clf, error = predecir_escenarios_p3(valores_a, valores_b)
     if error:
         return (
             "—",
@@ -664,6 +669,7 @@ def simular_escenarios(
             "—",
             "—",
             "—",
+            go.Figure(),
             go.Figure(),
             error,
             True,
@@ -681,7 +687,8 @@ def simular_escenarios(
         pred_b["nivel"],
         f"{delta_puntaje:.1f}",
         f"{delta_proba * 100:.1f}%",
-        fig,
+        fig_reg,
+        fig_clf,
         "",
         False,
     )
