@@ -1642,6 +1642,45 @@ def seleccionar_mejores_modelos_resultados(resumen_df):
     return pd.DataFrame(mejores)
 
 
+def seleccionar_top_modelos_resultados(resumen_df, top_n=2):
+    if resumen_df.empty:
+        return pd.DataFrame()
+
+    rows = []
+    for task, group in resumen_df.groupby("task"):
+        if task == "regresion":
+            metric = "rmse"
+            metric_label = "RMSE"
+            group = group.dropna(subset=[metric]).sort_values([metric, "r2"], ascending=[True, False])
+        elif task == "clasificacion_multiclase":
+            metric = "f1_macro"
+            metric_label = "F1 macro"
+            group = group.dropna(subset=[metric]).sort_values(metric, ascending=False)
+        else:
+            metric = "f1"
+            metric_label = "F1"
+            group = group.dropna(subset=[metric]).sort_values(metric, ascending=False)
+
+        if group.empty:
+            continue
+
+        for rank, (_, row) in enumerate(group.head(top_n).iterrows(), start=1):
+            rows.append(
+                {
+                    "task": task,
+                    "rank": rank,
+                    "model": row.get("model"),
+                    "feature_set": row.get("feature_set"),
+                    "metric": metric_label,
+                    "metric_value": round(float(row.get(metric)), 4) if pd.notna(row.get(metric)) else None,
+                    "config_id": row.get("config_id"),
+                    "run_id": row.get("run_id"),
+                }
+            )
+
+    return pd.DataFrame(rows)
+
+
 def construir_figuras_comparativas(resumen_df, history_df):
     fig_reg = go.Figure()
     fig_bin = go.Figure()
