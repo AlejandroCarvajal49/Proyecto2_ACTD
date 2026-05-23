@@ -1,8 +1,11 @@
+import json
+import os
+from pathlib import Path
+
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
-import os
 
 
 # CARGA DE DATOS
@@ -459,3 +462,254 @@ def generar_brecha_por_estrato(df, columna_materia):
     )
 
     return fig
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MODELOS PREDICTIVOS P2
+# ─────────────────────────────────────────────────────────────────────────────
+
+_MODELS_P2_DIR = Path(__file__).resolve().parent.parent / "models" / "pregunta_2"
+_MLRUNS_P2_DIR = Path(__file__).resolve().parent.parent / "mlruns" / "pregunta_2"
+
+FEATURES_P2 = [
+    "cole_naturaleza",
+    "fami_estratovivienda",
+    "fami_educacionmadre",
+    "fami_educacionpadre",
+    "cole_area_ubicacion",
+    "cole_jornada",
+]
+
+OPCIONES_P2 = {
+    "cole_naturaleza": ["OFICIAL", "NO OFICIAL"],
+    "fami_estratovivienda": [
+        "Estrato 1", "Estrato 2", "Estrato 3",
+        "Estrato 4", "Estrato 5", "Estrato 6", "Sin Estrato",
+    ],
+    "fami_educacionmadre": [
+        "Ninguno", "Primaria incompleta", "Primaria completa",
+        "Secundaria (Bachillerato) incompleta", "Secundaria (Bachillerato) completa",
+        "Tecnica o tecnologica incompleta", "Tecnica o tecnologica completa",
+        "Educacion profesional incompleta", "Educacion profesional completa",
+        "Postgrado", "No sabe", "No Aplica",
+    ],
+    "fami_educacionpadre": [
+        "Ninguno", "Primaria incompleta", "Primaria completa",
+        "Secundaria (Bachillerato) incompleta", "Secundaria (Bachillerato) completa",
+        "Tecnica o tecnologica incompleta", "Tecnica o tecnologica completa",
+        "Educacion profesional incompleta", "Educacion profesional completa",
+        "Postgrado", "No sabe", "No Aplica",
+    ],
+    "cole_area_ubicacion": ["RURAL", "URBANO"],
+    "cole_jornada": ["MANANA", "TARDE", "NOCHE", "COMPLETA", "SABATINA", "UNICA"],
+}
+
+
+def obtener_mlflow_info_p2():
+    env_uri = os.getenv("MLFLOW_TRACKING_URI")
+    tracking_uri = env_uri if env_uri else _MLRUNS_P2_DIR.as_uri()
+    return {
+        "tracking_uri": tracking_uri,
+        "ui_url": os.getenv("MLFLOW_UI_URL", "http://127.0.0.1:5000"),
+    }
+
+
+def cargar_resultados_mlflow_p2(max_runs=50):
+    try:
+        import mlflow
+        from mlflow.tracking import MlflowClient
+    except Exception as exc:
+        return pd.DataFrame(), f"MLflow no disponible: {exc}"
+
+    if not _MLRUNS_P2_DIR.exists():
+        return pd.DataFrame(), "No hay experimentos de P2. Ejecuta Analysis/entrenar_modelos_p2.py primero."
+
+    mlflow.set_tracking_uri(_MLRUNS_P2_DIR.as_uri())
+    client = MlflowClient()
+
+    rows = []
+    for exp_name in ["P2_publico_privado_regresion", "P2_publico_privado_clasificacion"]:
+        exp = client.get_experiment_by_name(exp_name)
+        if exp is None:
+            continue
+        for run in client.search_runs(
+            [exp.experiment_id],
+            order_by=["attributes.start_time DESC"],
+            max_results=max_runs,
+        ):
+            m = run.data.metrics
+            p = run.data.params
+            rows.append({
+                "task": run.data.tags.get("task", ""),
+                "run_name": run.info.run_name,
+                "layers": p.get("layers", ""),
+                "dropout": p.get("dropout", ""),
+                "learning_rate": p.get("learning_rate", ""),
+                "epochs_run": p.get("epochs_run", ""),
+                "batch_size": p.get("batch_size", ""),
+                "rmse": round(m["rmse"], 3) if "rmse" in m else None,
+                "mae": round(m["mae"], 3) if "mae" in m else None,
+                "r2": round(m["r2"], 4) if "r2" in m else None,
+                "accuracy": round(m["accuracy"], 4) if "accuracy" in m else None,
+                "precision": round(m["precision"], 4) if "precision" in m else None,
+                "recall": round(m["recall"], 4) if "recall" in m else None,
+                "f1": round(m["f1"], 4) if "f1" in m else None,
+                "run_id": run.info.run_id,
+            })
+
+    if not rows:
+        return pd.DataFrame(), "No se encontraron corridas en mlruns/pregunta_2."
+
+    return pd.DataFrame(rows), f"{len(rows)} corridas cargadas."
+
+
+def construir_figuras_mlflow_p2(df_runs):
+    if df_runs.empty:
+        return go.Figure(), go.Figure()
+
+    reg = df_runs[df_runs["task"] == "regresion"].copy()
+    clf = df_runs[df_runs["task"] == "clasificacion_binaria"].copy()
+
+    fig_reg = go.Figure()
+    if not reg.empty:
+        for col, color, name in [("rmse", "#e74c3c", "RMSE"), ("mae", "#3498db", "MAE")]:
+            fig_reg.add_trace(go.Bar(
+                x=reg["run_name"], y=reg[col].fillna(0),
+                name=name, marker_color=color,
+                text=[f"{v:.3f}" if v else "" for v in reg[col]],
+                textposition="outside",
+            ))
+        fig_reg.update_layout(
+            title="Regresion: RMSE y MAE por configuracion",
+            barmode="group", plot_bgcolor="white", height=300,
+            yaxis_title="Error", font=dict(size=11),
+        )
+
+    fig_clf = go.Figure()
+    if not clf.empty:
+        for col, color, name in [
+            ("accuracy", "#2ecc71", "Accuracy"),
+            ("precision", "#3498db", "Precision"),
+            ("recall", "#e67e22", "Recall"),
+            ("f1", "#9b59b6", "F1"),
+        ]:
+            fig_clf.add_trace(go.Bar(
+                x=clf["run_name"], y=clf[col].fillna(0),
+                name=name, marker_color=color,
+                text=[f"{v:.4f}" if v else "" for v in clf[col]],
+                textposition="outside",
+            ))
+        fig_clf.update_layout(
+            title="Clasificacion binaria: metricas por configuracion",
+            barmode="group", plot_bgcolor="white", height=300,
+            yaxis=dict(title="Score", range=[0, 1.15]),
+            font=dict(size=11),
+        )
+
+    return fig_reg, fig_clf
+
+
+def cargar_modelos_p2():
+    try:
+        import tensorflow as tf
+        import joblib
+    except Exception as exc:
+        return {"disponible": False, "error": str(exc)}
+
+    artefactos = {"disponible": True, "error": None}
+    for task in ["regresion", "clasificacion_binaria"]:
+        task_dir = _MODELS_P2_DIR / task / "best"
+        model_path = task_dir / "model.keras"
+        preproc_path = task_dir / "preprocessor.pkl"
+        meta_path = task_dir / "metadata.json"
+
+        if not (model_path.exists() and preproc_path.exists() and meta_path.exists()):
+            artefactos[task] = None
+            continue
+        try:
+            artefactos[task] = {
+                "model": tf.keras.models.load_model(str(model_path)),
+                "preprocessor": joblib.load(str(preproc_path)),
+                "metadata": json.load(open(str(meta_path), "r", encoding="utf-8")),
+            }
+        except Exception as exc:
+            artefactos[task] = None
+            if not artefactos.get("error"):
+                artefactos["error"] = str(exc)
+
+    return artefactos
+
+
+def predecir_escenarios_p2(valores_a, valores_b):
+    artefactos = cargar_modelos_p2()
+    if not artefactos.get("disponible"):
+        return None, None, go.Figure(), go.Figure(), artefactos.get("error", "Modelos no disponibles")
+
+    reg = artefactos.get("regresion")
+    clf = artefactos.get("clasificacion_binaria")
+
+    if reg is None or clf is None:
+        return None, None, go.Figure(), go.Figure(), (
+            "No se encontraron los modelos en models/pregunta_2/. "
+            "Ejecuta Analysis/entrenar_modelos_p2.py primero."
+        )
+
+    def _to_dense(m):
+        return m.toarray() if hasattr(m, "toarray") else m
+
+    def _predecir_una(valores):
+        row = pd.DataFrame([valores])
+        X_reg = _to_dense(reg["preprocessor"].transform(row))
+        puntaje = float(reg["model"].predict(X_reg, verbose=0).flatten()[0])
+        puntaje = max(0.0, min(500.0, puntaje))
+
+        X_clf = _to_dense(clf["preprocessor"].transform(row))
+        proba_bajo = float(clf["model"].predict(X_clf, verbose=0).flatten()[0])
+        proba_bajo = max(0.0, min(1.0, proba_bajo))
+
+        return {"puntaje": round(puntaje, 1), "proba_bajo": round(proba_bajo, 4)}
+
+    try:
+        pred_a = _predecir_una(valores_a)
+        pred_b = _predecir_una(valores_b)
+    except Exception as exc:
+        return None, None, go.Figure(), go.Figure(), f"Error al predecir: {exc}"
+
+    labels = ["Escenario A", "Escenario B"]
+    puntajes = [pred_a["puntaje"], pred_b["puntaje"]]
+    colores_reg = ["#1f77b4" if p >= 250 else "#c0392b" for p in puntajes]
+
+    fig_reg = go.Figure()
+    fig_reg.add_trace(go.Bar(
+        x=labels, y=puntajes, marker_color=colores_reg,
+        text=[f"{p:.1f}" for p in puntajes], textposition="outside",
+        width=0.4,
+    ))
+    fig_reg.add_hline(y=250, line_dash="dash", line_color="#888",
+                      annotation_text="Umbral 250", annotation_position="top right")
+    fig_reg.update_layout(
+        title="Puntaje Global predicho — Regresion",
+        yaxis=dict(title="punt_global", range=[0, 530]),
+        plot_bgcolor="white", height=320,
+        font=dict(family=FONT_FAMILY, size=12),
+    )
+
+    probas_pct = [pred_a["proba_bajo"] * 100, pred_b["proba_bajo"] * 100]
+    colores_clf = ["#c0392b" if p > 50 else "#27ae60" for p in probas_pct]
+
+    fig_clf = go.Figure()
+    fig_clf.add_trace(go.Bar(
+        x=labels, y=probas_pct, marker_color=colores_clf,
+        text=[f"{p:.1f}%" for p in probas_pct], textposition="outside",
+        width=0.4,
+    ))
+    fig_clf.add_hline(y=50, line_dash="dash", line_color="#888",
+                      annotation_text="50%", annotation_position="top right")
+    fig_clf.update_layout(
+        title="Riesgo de Bajo Rendimiento (punt_global < 250)",
+        yaxis=dict(title="%", range=[0, 115]),
+        plot_bgcolor="white", height=320,
+        font=dict(family=FONT_FAMILY, size=12),
+    )
+
+    return pred_a, pred_b, fig_reg, fig_clf, ""
