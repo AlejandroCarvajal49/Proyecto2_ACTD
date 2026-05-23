@@ -71,6 +71,16 @@ TARGET_REG = "punt_global"
 UMBRAL_CLASIF = 250
 RANDOM_STATE = 42
 
+# Targets de regresión: columna → slug de carpeta
+TARGETS_REG = {
+    "punt_global":              "global",
+    "punt_matematicas":         "matematicas",
+    "punt_ingles":              "ingles",
+    "punt_lectura_critica":     "lectura_critica",
+    "punt_c_naturales":         "c_naturales",
+    "punt_sociales_ciudadanas": "sociales_ciudadanas",
+}
+
 # Tres configuraciones por tarea — variando arquitectura, dropout y lr
 CONFIGS_REG = [
     {
@@ -213,25 +223,27 @@ def _serializable_params(config):
     return params
 
 
-def _guardar_modelo(task, model, preprocessor, config, metrics, feature_columns):
-    task_dir = MODELS_DIR / task / "best"
-    task_dir.mkdir(parents=True, exist_ok=True)
+def _guardar_modelo(save_dir: Path, model, preprocessor, config, metrics,
+                    feature_columns, target: str = None, task: str = None):
+    """Guarda model.keras, preprocessor.pkl y metadata.json en save_dir."""
+    save_dir.mkdir(parents=True, exist_ok=True)
 
-    model.save(str(task_dir / "model.keras"))
-    joblib.dump(preprocessor, str(task_dir / "preprocessor.pkl"))
+    model.save(str(save_dir / "model.keras"))
+    joblib.dump(preprocessor, str(save_dir / "preprocessor.pkl"))
 
     metadata = {
-        "task": task,
+        "task": task or ("regresion" if target else "clasificacion_binaria"),
+        "target": target,
         "config": _serializable_params(config),
         "metrics": metrics,
         "feature_columns": feature_columns,
         "label_mapping": None,
         "trained_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
     }
-    with open(task_dir / "metadata.json", "w", encoding="utf-8") as f:
+    with open(save_dir / "metadata.json", "w", encoding="utf-8") as f:
         json.dump(metadata, f, ensure_ascii=True, indent=2)
 
-    print(f"  Artefactos guardados en {task_dir}")
+    print(f"  Artefactos guardados en {save_dir}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -253,233 +265,21 @@ def cargar_y_preparar():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# ENTRENAMIENTO — REGRESIÓN
+# ENTRENAMIENTO — REGRESIÓN PARAMETRIZADA POR TARGET
 # ─────────────────────────────────────────────────────────────────────────────
 
-def entrenar_regresion(df_model):
+def entrenar_regresion_target(target_col: str, slug: str):
+    """Entrena regresión MLP para un target dado usando FEATURES_AMPLIADO."""
     print("\n" + "=" * 60)
-    print("REGRESION: predice punt_global")
+    print(f"REGRESION: target={target_col}  slug={slug}")
     print("=" * 60)
 
-    X = df_model[FEATURES]
-    y = df_model[TARGET_REG].values
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=RANDOM_STATE
-    )
-
-    preprocessor = _build_preprocessor()
-    X_train_proc = _to_dense(preprocessor.fit_transform(X_train))
-    X_test_proc = _to_dense(preprocessor.transform(X_test))
-    input_dim = X_train_proc.shape[1]
-    print(f"  input_dim={input_dim} | train={len(X_train):,} | test={len(X_test):,}")
-
-    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-    mlflow.set_experiment("P2_publico_privado_regresion")
-
-    best_rmse = float("inf")
-    best_config = None
-    best_model_ref = [None]
-
-    for config in CONFIGS_REG:
-        run_name = f"p2_reg_{config['name']}"
-        print(f"\n  [{run_name}]")
-        with mlflow.start_run(run_name=run_name):
-            model = _crear_mlp(input_dim, config, 1, "linear", "mse")
-
-            history = model.fit(
-                X_train_proc,
-                y_train,
-                validation_split=0.2,
-                epochs=config["epochs"],
-                batch_size=config["batch_size"],
-                verbose=0,
-                callbacks=[
-                    tf.keras.callbacks.EarlyStopping(
-                        patience=5, restore_best_weights=True
-                    )
-                ],
-            )
-
-            preds = model.predict(X_test_proc, verbose=0).flatten()
-            rmse = float(np.sqrt(mean_squared_error(y_test, preds)))
-            mae = float(mean_absolute_error(y_test, preds))
-            r2 = float(r2_score(y_test, preds))
-            epochs_run = len(history.history["loss"])
-
-            mlflow.set_tag("task", "regresion")
-            mlflow.set_tag("pregunta", "P2_publico_privado")
-            for k, v in _serializable_params(config).items():
-                mlflow.log_param(k, v)
-            mlflow.log_param("input_dim", input_dim)
-            mlflow.log_param("epochs_run", epochs_run)
-            mlflow.log_metric("rmse", rmse)
-            mlflow.log_metric("mae", mae)
-            mlflow.log_metric("r2", r2)
-
-            with tempfile.TemporaryDirectory() as tmp:
-                hist_path = os.path.join(tmp, "history.json")
-                with open(hist_path, "w") as fh:
-                    json.dump(
-                        {k: [float(x) for x in v] for k, v in history.history.items()},
-                        fh,
-                    )
-                mlflow.log_artifact(hist_path, "history")
-
-                model_path = os.path.join(tmp, "model.keras")
-                model.save(model_path)
-                mlflow.log_artifact(model_path, "model")
-
-            print(f"    rmse={rmse:.3f}  mae={mae:.3f}  r2={r2:.4f}  epochs={epochs_run}")
-
-            if rmse < best_rmse:
-                best_rmse = rmse
-                best_config = config
-                best_model_ref[0] = model
-
-    best_model = best_model_ref[0]
-    preds_best = best_model.predict(X_test_proc, verbose=0).flatten()
-    metrics = {
-        "rmse": float(np.sqrt(mean_squared_error(y_test, preds_best))),
-        "mae": float(mean_absolute_error(y_test, preds_best)),
-        "r2": float(r2_score(y_test, preds_best)),
-    }
-
-    print(f"\n  >> Mejor: {best_config['name']}  RMSE={metrics['rmse']:.3f}  R2={metrics['r2']:.4f}")
-    _guardar_modelo("regresion", best_model, preprocessor, best_config, metrics, FEATURES)
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# ENTRENAMIENTO — CLASIFICACIÓN BINARIA
-# ─────────────────────────────────────────────────────────────────────────────
-
-def entrenar_clasificacion(df_model):
-    print("\n" + "=" * 60)
-    print(f"CLASIFICACION BINARIA: bajo_rendimiento (punt_global < {UMBRAL_CLASIF})")
-    print("=" * 60)
-
-    X = df_model[FEATURES]
-    y = df_model["bajo_rendimiento"].values
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=RANDOM_STATE, stratify=y
-    )
-
-    preprocessor = _build_preprocessor()
-    X_train_proc = _to_dense(preprocessor.fit_transform(X_train))
-    X_test_proc = _to_dense(preprocessor.transform(X_test))
-    input_dim = X_train_proc.shape[1]
-    print(f"  input_dim={input_dim} | train={len(X_train):,} | test={len(X_test):,}")
-
-    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-    mlflow.set_experiment("P2_publico_privado_clasificacion")
-
-    best_f1 = -1.0
-    best_config = None
-    best_model_ref = [None]
-
-    for config in CONFIGS_CLASIF:
-        run_name = f"p2_clf_{config['name']}"
-        print(f"\n  [{run_name}]")
-        with mlflow.start_run(run_name=run_name):
-            model = _crear_mlp(
-                input_dim,
-                config,
-                1,
-                "sigmoid",
-                "binary_crossentropy",
-                metrics=["accuracy"],
-            )
-
-            history = model.fit(
-                X_train_proc,
-                y_train,
-                validation_split=0.2,
-                epochs=config["epochs"],
-                batch_size=config["batch_size"],
-                verbose=0,
-                callbacks=[
-                    tf.keras.callbacks.EarlyStopping(
-                        patience=5, restore_best_weights=True
-                    )
-                ],
-            )
-
-            probas = model.predict(X_test_proc, verbose=0).flatten()
-            preds = (probas >= 0.5).astype(int)
-            acc = float(accuracy_score(y_test, preds))
-            prec = float(precision_score(y_test, preds, zero_division=0))
-            rec = float(recall_score(y_test, preds, zero_division=0))
-            f1 = float(f1_score(y_test, preds, zero_division=0))
-            epochs_run = len(history.history["loss"])
-
-            mlflow.set_tag("task", "clasificacion_binaria")
-            mlflow.set_tag("pregunta", "P2_publico_privado")
-            for k, v in _serializable_params(config).items():
-                mlflow.log_param(k, v)
-            mlflow.log_param("input_dim", input_dim)
-            mlflow.log_param("epochs_run", epochs_run)
-            mlflow.log_param("umbral_clasif", UMBRAL_CLASIF)
-            mlflow.log_metric("accuracy", acc)
-            mlflow.log_metric("precision", prec)
-            mlflow.log_metric("recall", rec)
-            mlflow.log_metric("f1", f1)
-
-            with tempfile.TemporaryDirectory() as tmp:
-                hist_path = os.path.join(tmp, "history.json")
-                with open(hist_path, "w") as fh:
-                    json.dump(
-                        {k: [float(x) for x in v] for k, v in history.history.items()},
-                        fh,
-                    )
-                mlflow.log_artifact(hist_path, "history")
-
-                model_path = os.path.join(tmp, "model.keras")
-                model.save(model_path)
-                mlflow.log_artifact(model_path, "model")
-
-            print(
-                f"    acc={acc:.4f}  prec={prec:.4f}  rec={rec:.4f}  f1={f1:.4f}  epochs={epochs_run}"
-            )
-
-            if f1 > best_f1:
-                best_f1 = f1
-                best_config = config
-                best_model_ref[0] = model
-
-    best_model = best_model_ref[0]
-    probas_best = best_model.predict(X_test_proc, verbose=0).flatten()
-    preds_best = (probas_best >= 0.5).astype(int)
-    metrics = {
-        "accuracy": float(accuracy_score(y_test, preds_best)),
-        "precision": float(precision_score(y_test, preds_best, zero_division=0)),
-        "recall": float(recall_score(y_test, preds_best, zero_division=0)),
-        "f1": float(f1_score(y_test, preds_best, zero_division=0)),
-    }
-
-    print(f"\n  >> Mejor: {best_config['name']}  F1={metrics['f1']:.4f}  acc={metrics['accuracy']:.4f}")
-    _guardar_modelo(
-        "clasificacion_binaria", best_model, preprocessor, best_config, metrics, FEATURES
-    )
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# ENTRENAMIENTO CON FEATURES AMPLIADO — comparación vs baseline
-# ─────────────────────────────────────────────────────────────────────────────
-
-def entrenar_regresion_ampliado(df_model, r2_baseline: float):
-    """Entrena regresión con features adicionales. Actualiza best/ solo si mejora R²."""
-    print("\n" + "=" * 60)
-    print("REGRESION AMPLIADA: + internet, computador, bilingue, personashogar")
-    print(f"  R² baseline (features originales) = {r2_baseline:.4f}")
-    print("=" * 60)
-
-    # Necesitamos las columnas extra que no están en df_model → recargamos
     df_full = pd.read_csv(str(DATA_PATH), dtype={"cole_cod_mcpio_ubicacion": str})
-    df_full = df_full[FEATURES_AMPLIADO + [TARGET_REG]].dropna(subset=[TARGET_REG])
+    cols_needed = FEATURES_AMPLIADO + [target_col]
+    df_full = df_full[cols_needed].dropna(subset=[target_col])
 
     X = df_full[FEATURES_AMPLIADO]
-    y = df_full[TARGET_REG].values
+    y = df_full[target_col].values
 
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=RANDOM_STATE
@@ -494,39 +294,12 @@ def entrenar_regresion_ampliado(df_model, r2_baseline: float):
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     mlflow.set_experiment("P2_publico_privado_regresion")
 
-    configs_amp = [
-        {
-            "name": "mlp_amp_64_32",
-            "layers": [64, 32],
-            "activation": "relu",
-            "dropout": 0.1,
-            "l2": 0.0,
-            "optimizer": "adam",
-            "learning_rate": 0.001,
-            "loss": "mse",
-            "epochs": 60,
-            "batch_size": 256,
-        },
-        {
-            "name": "mlp_amp_128_64_32",
-            "layers": [128, 64, 32],
-            "activation": "relu",
-            "dropout": 0.2,
-            "l2": 0.0001,
-            "optimizer": "adam",
-            "learning_rate": 0.001,
-            "loss": "mse",
-            "epochs": 60,
-            "batch_size": 256,
-        },
-    ]
-
-    best_r2  = -float("inf")
+    best_r2 = -float("inf")
     best_config = None
     best_model_ref = [None]
 
-    for config in configs_amp:
-        run_name = f"p2_reg_{config['name']}"
+    for config in CONFIGS_REG:
+        run_name = f"reg_{slug}_{config['name']}"
         print(f"\n  [{run_name}]")
         with mlflow.start_run(run_name=run_name):
             model = _crear_mlp(input_dim, config, 1, "linear", "mse")
@@ -544,9 +317,10 @@ def entrenar_regresion_ampliado(df_model, r2_baseline: float):
             r2   = float(r2_score(y_test, preds))
             epochs_run = len(history.history["loss"])
 
-            mlflow.set_tag("task",     "regresion")
-            mlflow.set_tag("pregunta", "P2_publico_privado")
-            mlflow.set_tag("feature_set", "ampliado")
+            mlflow.set_tag("task",    "regresion")
+            mlflow.set_tag("pregunta","P2_publico_privado")
+            mlflow.set_tag("target",  target_col)
+            mlflow.set_tag("slug",    slug)
             for k, v in _serializable_params(config).items():
                 mlflow.log_param(k, v)
             mlflow.log_param("input_dim",  input_dim)
@@ -558,7 +332,8 @@ def entrenar_regresion_ampliado(df_model, r2_baseline: float):
             with tempfile.TemporaryDirectory() as tmp:
                 hist_path = os.path.join(tmp, "history.json")
                 with open(hist_path, "w") as fh:
-                    json.dump({k: [float(x) for x in v] for k, v in history.history.items()}, fh)
+                    json.dump({k: [float(x) for x in v]
+                               for k, v in history.history.items()}, fh)
                 mlflow.log_artifact(hist_path, "history")
                 model_path = os.path.join(tmp, "model.keras")
                 model.save(model_path)
@@ -571,25 +346,19 @@ def entrenar_regresion_ampliado(df_model, r2_baseline: float):
                 best_config = config
                 best_model_ref[0] = model
 
-    mejora = best_r2 - r2_baseline
-    print(f"\n  >> Mejor ampliado: {best_config['name']}  R²={best_r2:.4f}")
-    print(f"  >> Mejora vs baseline: {mejora:+.4f}")
+    best_model = best_model_ref[0]
+    preds_best = best_model.predict(X_test_proc, verbose=0).flatten()
+    metrics = {
+        "rmse": float(np.sqrt(mean_squared_error(y_test, preds_best))),
+        "mae":  float(mean_absolute_error(y_test, preds_best)),
+        "r2":   float(r2_score(y_test, preds_best)),
+    }
+    print(f"\n  >> Mejor: {best_config['name']}  R²={metrics['r2']:.4f}  RMSE={metrics['rmse']:.3f}")
 
-    if mejora > 0.005:
-        preds_best = best_model_ref[0].predict(X_test_proc, verbose=0).flatten()
-        metrics = {
-            "rmse": float(np.sqrt(mean_squared_error(y_test, preds_best))),
-            "mae":  float(mean_absolute_error(y_test, preds_best)),
-            "r2":   float(r2_score(y_test, preds_best)),
-        }
-        _guardar_modelo("regresion", best_model_ref[0], preprocessor,
-                        best_config, metrics, FEATURES_AMPLIADO)
-        print(f"  >> Modelo best/ ACTUALIZADO (mejora > 0.005)")
-    else:
-        print(f"  >> Modelo best/ NO actualizado — mejora ({mejora:+.4f}) insuficiente.")
-        print(f"     Se conserva el modelo original (R²={r2_baseline:.4f}).")
-
-    return best_r2, mejora
+    save_dir = MODELS_DIR / "regresion" / slug / "best"
+    _guardar_modelo(save_dir, best_model, preprocessor, best_config,
+                    metrics, FEATURES_AMPLIADO, target=target_col)
+    return metrics
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -686,8 +455,10 @@ def entrenar_clasificacion_ampliado(f1_baseline: float):
     print(f"  >> Cambio vs baseline: {mejora:+.4f}")
 
     if mejora >= -0.005:
-        _guardar_modelo("clasificacion_binaria", best_model_ref[0], preprocessor,
-                        best_config, best_metrics, FEATURES_AMPLIADO)
+        clf_dir = MODELS_DIR / "clasificacion_binaria" / "best"
+        _guardar_modelo(clf_dir, best_model_ref[0], preprocessor,
+                        best_config, best_metrics, FEATURES_AMPLIADO,
+                        task="clasificacion_binaria")
         print(f"  >> Modelo best/ ACTUALIZADO (cambio={mejora:+.4f})")
     else:
         print(f"  >> Modelo best/ NO actualizado — degradación ({mejora:+.4f}) supera umbral -0.005.")
@@ -697,18 +468,93 @@ def entrenar_clasificacion_ampliado(f1_baseline: float):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# ANÁLISIS: BRECHA AJUSTADA POR MATERIA Y ESTRATO
+# ─────────────────────────────────────────────────────────────────────────────
+
+def calcular_brecha_ajustada():
+    """Para cada modelo de regresión y cada estrato, calcula pred(OFICIAL) vs pred(NO OFICIAL).
+    El perfil base mantiene las demás variables constantes (valores típicos).
+    Guarda CSV en Analysis/resultados_estadisticos_p2/brecha_ajustada_por_materia.csv.
+    """
+    print("\n" + "=" * 60)
+    print("BRECHA AJUSTADA: efecto neto del tipo de colegio por materia y estrato")
+    print("=" * 60)
+
+    ESTRATOS = ["Estrato 1", "Estrato 2", "Estrato 3",
+                "Estrato 4", "Estrato 5", "Estrato 6"]
+    PERFIL_FIJO = {
+        "fami_educacionmadre": "Secundaria (Bachillerato) completa",
+        "fami_educacionpadre": "Secundaria (Bachillerato) completa",
+        "cole_area_ubicacion": "URBANO",
+        "cole_jornada":        "COMPLETA",
+        # TIC features → NaN → imputer fills with training mode
+    }
+
+    rows = []
+    for target_col, slug in TARGETS_REG.items():
+        model_dir = MODELS_DIR / "regresion" / slug / "best"
+        if not (model_dir / "model.keras").exists():
+            print(f"  Falta modelo para {slug}, omitiendo.")
+            continue
+
+        model = tf.keras.models.load_model(str(model_dir / "model.keras"))
+        preprocessor = joblib.load(str(model_dir / "preprocessor.pkl"))
+        feat_cols = json.load(open(str(model_dir / "metadata.json")))["feature_columns"]
+
+        for estrato in ESTRATOS:
+            preds_nat = {}
+            for naturaleza in ["OFICIAL", "NO OFICIAL"]:
+                perfil = {**PERFIL_FIJO, "fami_estratovivienda": estrato,
+                          "cole_naturaleza": naturaleza}
+                row_data = {col: perfil.get(col, np.nan) for col in feat_cols}
+                row_df = pd.DataFrame([row_data], columns=feat_cols)
+                X = _to_dense(preprocessor.transform(row_df))
+                pred = float(model.predict(X, verbose=0).flatten()[0])
+                preds_nat[naturaleza] = round(pred, 2)
+
+            rows.append({
+                "target":         target_col,
+                "slug":           slug,
+                "estrato":        estrato,
+                "pred_oficial":   preds_nat["OFICIAL"],
+                "pred_privado":   preds_nat["NO OFICIAL"],
+                "brecha_ajustada": round(preds_nat["NO OFICIAL"] - preds_nat["OFICIAL"], 2),
+            })
+        print(f"  {slug}: OK")
+
+    df_brecha = pd.DataFrame(rows)
+    out_dir = BASE_DIR / "Analysis" / "resultados_estadisticos_p2"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / "brecha_ajustada_por_materia.csv"
+    df_brecha.to_csv(str(out_path), index=False)
+    print(f"\n  Guardado: {out_path}")
+    return df_brecha
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # MAIN
 # ─────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     MLRUNS_DIR.mkdir(parents=True, exist_ok=True)
     os.environ.setdefault("MLFLOW_TRACKING_URI", MLFLOW_TRACKING_URI)
-    import json as _json
 
-    with open(MODELS_DIR / "clasificacion_binaria" / "best" / "metadata.json") as f:
-        f1_baseline = _json.load(f)["metrics"]["f1"]
+    # ── PASO 1: entrenar los 6 modelos de regresión ──────────────────────────
+    resultados_reg = {}
+    for target_col, slug in TARGETS_REG.items():
+        metrics = entrenar_regresion_target(target_col, slug)
+        resultados_reg[slug] = metrics
 
-    entrenar_clasificacion_ampliado(f1_baseline)
+    print("\n" + "=" * 60)
+    print("RESUMEN REGRESIÓN POR TARGET")
+    print(f"{'Slug':<22} {'R²':>7}  {'RMSE':>8}  {'MAE':>8}")
+    print("-" * 50)
+    for slug, m in resultados_reg.items():
+        print(f"  {slug:<20} {m['r2']:>7.4f}  {m['rmse']:>8.3f}  {m['mae']:>8.3f}")
+
+    # ── PASO 2: brecha ajustada por materia ──────────────────────────────────
+    calcular_brecha_ajustada()
+
     print("\n" + "=" * 60)
     print("Entrenamiento completo.")
     print(f"Modelos en: {MODELS_DIR}")

@@ -1,0 +1,35 @@
+{
+  "task": "regresion",
+  "target": "punt_lectura_critica",
+  "config": {
+    "name": "mlp_128_64_32",
+    "layers": "128-64-32",
+    "activation": "relu",
+    "dropout": 0.2,
+    "l2": 0.0001,
+    "optimizer": "adam",
+    "learning_rate": 0.001,
+    "loss": "mse",
+    "epochs": 60,
+    "batch_size": 256
+  },
+  "metrics": {
+    "rmse": 8.803254127418024,
+    "mae": 7.010146706044487,
+    "r2": 0.2697826111206959
+  },
+  "feature_columns": [
+    "cole_naturaleza",
+    "fami_estratovivienda",
+    "fami_educacionmadre",
+    "fami_educacionpadre",
+    "cole_area_ubicacion",
+    "cole_jornada",
+    "fami_tieneinternet",
+    "fami_tienecomputador",
+    "cole_bilingue",
+    "fami_personashogar"
+  ],
+  "label_mapping": null,
+  "trained_at": "2026-05-23 17:11:17"
+}

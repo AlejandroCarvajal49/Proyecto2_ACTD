@@ -9,8 +9,9 @@ from Analysis.logica_p2 import (
     generar_brecha_por_estrato, formato_periodo, MATERIAS,
     obtener_mlflow_info_p2, cargar_resultados_mlflow_p2,
     construir_figuras_mlflow_p2, predecir_escenarios_p2,
-    OPCIONES_P2,
+    OPCIONES_P2, TARGETS_LABELS_P2,
     generar_figura_brecha_materias_stat, generar_figura_brecha_estratos_stat,
+    generar_figura_brecha_ajustada_p2,
 )
 
 dash.register_page(__name__, path="/pregunta_2")
@@ -134,6 +135,10 @@ entradas, el modelo permite cuantificar el efecto neto del tipo de colegio contr
                 dbc.Col(dcc.Graph(figure=generar_figura_brecha_estratos_stat()), md=6),
             ]),
 
+            dbc.Row([
+                dbc.Col(dcc.Graph(figure=generar_figura_brecha_ajustada_p2()), md=12),
+            ], className="mt-2"),
+
             dbc.Alert([
                 html.Strong("Hallazgo clave: "),
                 "En estratos 1 y 2 los colegios públicos superan a los privados (brechas de −13.5 y −11.4 pts). "
@@ -201,13 +206,27 @@ entradas, el modelo permite cuantificar el efecto neto del tipo de colegio contr
             html.H4("Simulador de escenarios", className="mb-3"),
             dbc.Alert(
                 [
-                    html.Strong("Regresión: "), "predice el puntaje global esperado (0-500). ",
+                    html.Strong("Regresión: "), "predice el puntaje esperado en la materia seleccionada. ",
                     html.Strong("Clasificación: "),
                     "estima la probabilidad de bajo rendimiento (punt_global < 250). ",
                     "Compara dos perfiles para aislar el efecto de cada variable.",
                 ],
                 color="info", className="shadow-sm",
             ),
+
+            dbc.Row([
+                dbc.Col([
+                    html.Label("Materia a predecir", className="fw-bold small"),
+                    dcc.Dropdown(
+                        id="p2-materia-select",
+                        options=[{"label": lbl, "value": slug}
+                                 for slug, lbl in TARGETS_LABELS_P2.items()],
+                        value="global",
+                        clearable=False,
+                        className="mb-3 shadow-sm",
+                    ),
+                ], md=5),
+            ]),
             dbc.Alert(id="p2-alerta-sim", color="danger", is_open=False, className="mb-3"),
 
             dbc.Row([
@@ -476,13 +495,14 @@ def cargar_lab_mlflow(n_clicks):
     State("p2-b-area", "value"),
     State("p2-b-jornada", "value"),
     State("p2-switch-controlada", "value"),
+    State("p2-materia-select", "value"),
     prevent_initial_call=True,
 )
 def simular_p2(
     n_clicks,
     a_nat, a_est, a_edu_madre, a_edu_padre, a_area, a_jornada,
     b_nat, b_est, b_edu_madre, b_edu_padre, b_area, b_jornada,
-    controlada,
+    controlada, target_slug,
 ):
     if not n_clicks:
         return "—", "—", "—", "—", "—", "—", go.Figure(), go.Figure(), "", False
@@ -510,7 +530,9 @@ def simular_p2(
             "cole_jornada": b_jornada,
         }
 
-    pred_a, pred_b, fig_reg, fig_clf, error = predecir_escenarios_p2(valores_a, valores_b)
+    pred_a, pred_b, fig_reg, fig_clf, error = predecir_escenarios_p2(
+        valores_a, valores_b, target_slug=target_slug or "global"
+    )
 
     if error:
         return "—", "—", "—", "—", "—", "—", go.Figure(), go.Figure(), error, True

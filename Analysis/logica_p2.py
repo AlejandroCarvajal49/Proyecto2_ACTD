@@ -564,6 +564,16 @@ FEATURES_P2 = [
     "cole_jornada",
 ]
 
+# Targets de regresión disponibles: slug → etiqueta de display
+TARGETS_LABELS_P2 = {
+    "global":              "Puntaje Global",
+    "matematicas":         "Matemáticas",
+    "ingles":              "Inglés",
+    "lectura_critica":     "Lectura Crítica",
+    "c_naturales":         "Ciencias Naturales",
+    "sociales_ciudadanas": "Sociales y Ciudadanas",
+}
+
 OPCIONES_P2 = {
     "cole_naturaleza": ["OFICIAL", "NO OFICIAL"],
     "fami_estratovivienda": [
@@ -693,50 +703,82 @@ def construir_figuras_mlflow_p2(df_runs):
     return fig_reg, fig_clf
 
 
-def cargar_modelos_p2():
+_MODELOS_CACHE = {}
+
+
+def _cargar_bundle(model_dir: Path):
+    """Carga model.keras + preprocessor.pkl + metadata.json desde model_dir."""
     try:
         import tensorflow as tf
         import joblib
     except Exception as exc:
-        return {"disponible": False, "error": str(exc)}
+        return None, str(exc)
+    try:
+        bundle = {
+            "model":       tf.keras.models.load_model(str(model_dir / "model.keras")),
+            "preprocessor": joblib.load(str(model_dir / "preprocessor.pkl")),
+            "metadata":    json.load(open(str(model_dir / "metadata.json"), encoding="utf-8")),
+        }
+        return bundle, None
+    except Exception as exc:
+        return None, str(exc)
 
-    artefactos = {"disponible": True, "error": None}
-    for task in ["regresion", "clasificacion_binaria"]:
-        task_dir = _MODELS_P2_DIR / task / "best"
-        model_path = task_dir / "model.keras"
-        preproc_path = task_dir / "preprocessor.pkl"
-        meta_path = task_dir / "metadata.json"
 
-        if not (model_path.exists() and preproc_path.exists() and meta_path.exists()):
-            artefactos[task] = None
+def cargar_modelos_p2():
+    """Carga (con caché de proceso) los 6 modelos de regresión y el de clasificación."""
+    global _MODELOS_CACHE
+    if _MODELOS_CACHE:
+        return _MODELOS_CACHE
+
+    artefactos = {"disponible": True, "error": None, "regresion": {}}
+
+    # 6 modelos de regresión
+    for slug in TARGETS_LABELS_P2:
+        model_dir = _MODELS_P2_DIR / "regresion" / slug / "best"
+        if not (model_dir / "model.keras").exists():
             continue
-        try:
-            artefactos[task] = {
-                "model": tf.keras.models.load_model(str(model_path)),
-                "preprocessor": joblib.load(str(preproc_path)),
-                "metadata": json.load(open(str(meta_path), "r", encoding="utf-8")),
-            }
-        except Exception as exc:
-            artefactos[task] = None
-            if not artefactos.get("error"):
-                artefactos["error"] = str(exc)
+        bundle, err = _cargar_bundle(model_dir)
+        if bundle:
+            artefactos["regresion"][slug] = bundle
+        elif not artefactos["error"]:
+            artefactos["error"] = err
 
+    # Modelo de clasificación
+    clf_dir = _MODELS_P2_DIR / "clasificacion_binaria" / "best"
+    if (clf_dir / "model.keras").exists():
+        bundle, err = _cargar_bundle(clf_dir)
+        artefactos["clasificacion_binaria"] = bundle
+        if err and not artefactos["error"]:
+            artefactos["error"] = err
+    else:
+        artefactos["clasificacion_binaria"] = None
+
+    if not artefactos["regresion"] and artefactos["clasificacion_binaria"] is None:
+        artefactos["disponible"] = False
+
+    _MODELOS_CACHE = artefactos
     return artefactos
 
 
-def predecir_escenarios_p2(valores_a, valores_b):
+def predecir_escenarios_p2(valores_a, valores_b, target_slug: str = "global"):
     artefactos = cargar_modelos_p2()
     if not artefactos.get("disponible"):
         return None, None, go.Figure(), go.Figure(), artefactos.get("error", "Modelos no disponibles")
 
-    reg = artefactos.get("regresion")
-    clf = artefactos.get("clasificacion_binaria")
+    reg_dict = artefactos.get("regresion", {})
+    clf     = artefactos.get("clasificacion_binaria")
+
+    reg = reg_dict.get(target_slug)
+    if reg is None and reg_dict:
+        reg = next(iter(reg_dict.values()))  # fallback al primer disponible
 
     if reg is None or clf is None:
         return None, None, go.Figure(), go.Figure(), (
             "No se encontraron los modelos en models/pregunta_2/. "
             "Ejecuta Analysis/entrenar_modelos_p2.py primero."
         )
+
+    target_label = TARGETS_LABELS_P2.get(target_slug, target_slug)
 
     def _to_dense(m):
         return m.toarray() if hasattr(m, "toarray") else m
@@ -777,8 +819,8 @@ def predecir_escenarios_p2(valores_a, valores_b):
     fig_reg.add_hline(y=250, line_dash="dash", line_color="#888",
                       annotation_text="Umbral 250", annotation_position="top right")
     fig_reg.update_layout(
-        title="Puntaje Global predicho — Regresion",
-        yaxis=dict(title="punt_global", range=[0, 530]),
+        title=f"Puntaje predicho — {target_label}",
+        yaxis=dict(title=target_label, range=[0, 530 if target_slug == "global" else 110]),
         plot_bgcolor="white", height=320,
         font=dict(family=FONT_FAMILY, size=12),
     )
@@ -802,3 +844,56 @@ def predecir_escenarios_p2(valores_a, valores_b):
     )
 
     return pred_a, pred_b, fig_reg, fig_clf, ""
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# BRECHA AJUSTADA POR MATERIA (desde CSV precalculado)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_BRECHA_AJUSTADA_PATH = _STATS_DIR / "brecha_ajustada_por_materia.csv"
+
+
+def cargar_brecha_ajustada_p2():
+    if not _BRECHA_AJUSTADA_PATH.exists():
+        return None
+    try:
+        return pd.read_csv(str(_BRECHA_AJUSTADA_PATH))
+    except Exception:
+        return None
+
+
+def generar_figura_brecha_ajustada_p2():
+    """Heatmap-style bar: brecha ajustada promedio por target (promedio sobre estratos)."""
+    df = cargar_brecha_ajustada_p2()
+    if df is None:
+        return go.Figure().update_layout(title="Sin datos (ejecutar entrenar_modelos_p2.py)")
+
+    resumen = (df.groupby("slug")["brecha_ajustada"]
+               .mean()
+               .reset_index()
+               .rename(columns={"brecha_ajustada": "brecha_media"}))
+
+    # Orden por magnitud absoluta descendente
+    resumen["label"] = resumen["slug"].map(TARGETS_LABELS_P2)
+    resumen = resumen.sort_values("brecha_media", ascending=True)
+    colores = ["#c0392b" if b > 0 else "#2166ac" for b in resumen["brecha_media"]]
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=resumen["brecha_media"],
+        y=resumen["label"],
+        orientation="h",
+        marker_color=colores,
+        text=[f"{b:+.2f} pts" for b in resumen["brecha_media"]],
+        textposition="outside",
+    ))
+    fig.add_vline(x=0, line_color="#888", line_dash="dash")
+    fig.update_layout(
+        title="Brecha ajustada por materia — efecto neto del tipo de colegio",
+        xaxis_title="Diferencia predicha (privado − público) · perfil base fijo",
+        plot_bgcolor="white",
+        height=300,
+        font=dict(family=FONT_FAMILY, size=12),
+        margin=dict(l=160, r=100, t=50, b=40),
+    )
+    return fig
