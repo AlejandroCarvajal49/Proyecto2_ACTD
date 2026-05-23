@@ -2,11 +2,11 @@
   "task": "regresion",
   "target": "punt_c_naturales",
   "config": {
-    "name": "mlp_128_64_32",
-    "layers": "128-64-32",
+    "name": "mlp_64_32",
+    "layers": "64-32",
     "activation": "relu",
-    "dropout": 0.2,
-    "l2": 0.0001,
+    "dropout": 0.1,
+    "l2": 0.0,
     "optimizer": "adam",
     "learning_rate": 0.001,
     "loss": "mse",
@@ -14,9 +14,9 @@
     "batch_size": 256
   },
   "metrics": {
-    "rmse": 8.853073829506453,
-    "mae": 7.063605583410231,
-    "r2": 0.2825540159705221
+    "rmse": 8.861107474232659,
+    "mae": 7.06627266159555,
+    "r2": 0.281251344972979
   },
   "feature_columns": [
     "cole_naturaleza",
@@ -31,5 +31,5 @@
     "fami_personashogar"
   ],
   "label_mapping": null,
-  "trained_at": "2026-05-23 17:05:30"
+  "trained_at": "2026-05-23 17:16:04"
 }
