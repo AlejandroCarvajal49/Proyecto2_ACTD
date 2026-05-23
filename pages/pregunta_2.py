@@ -268,6 +268,24 @@ entradas, el modelo permite cuantificar el efecto neto del tipo de colegio contr
                 ], md=6),
             ], className="mb-3"),
 
+            dbc.Row([
+                dbc.Col([
+                    dbc.Switch(
+                        id="p2-switch-controlada",
+                        label="Comparación controlada (solo tipo de colegio)",
+                        value=False,
+                        className="mb-1",
+                    ),
+                    html.Small(
+                        "Cuando está activo, el Escenario B es idéntico al A "
+                        "excepto por el tipo de colegio (público ↔ privado). "
+                        "El delta resultante aísla el efecto neto de la naturaleza del colegio, "
+                        "equivalente a la prueba t estratificada dentro del mismo estrato.",
+                        className="text-muted d-block mb-3",
+                    ),
+                ]),
+            ]),
+
             dbc.Button("Comparar escenarios", id="p2-btn-simular",
                        color="success", className="mb-4"),
 
@@ -457,12 +475,14 @@ def cargar_lab_mlflow(n_clicks):
     State("p2-b-edu-padre", "value"),
     State("p2-b-area", "value"),
     State("p2-b-jornada", "value"),
+    State("p2-switch-controlada", "value"),
     prevent_initial_call=True,
 )
 def simular_p2(
     n_clicks,
     a_nat, a_est, a_edu_madre, a_edu_padre, a_area, a_jornada,
     b_nat, b_est, b_edu_madre, b_edu_padre, b_area, b_jornada,
+    controlada,
 ):
     if not n_clicks:
         return "—", "—", "—", "—", "—", "—", go.Figure(), go.Figure(), "", False
@@ -475,14 +495,20 @@ def simular_p2(
         "cole_area_ubicacion": a_area,
         "cole_jornada": a_jornada,
     }
-    valores_b = {
-        "cole_naturaleza": b_nat,
-        "fami_estratovivienda": b_est,
-        "fami_educacionmadre": b_edu_madre,
-        "fami_educacionpadre": b_edu_padre,
-        "cole_area_ubicacion": b_area,
-        "cole_jornada": b_jornada,
-    }
+
+    if controlada:
+        opts_nat = OPT["cole_naturaleza"]
+        b_nat_ctrl = opts_nat[1] if a_nat == opts_nat[0] else opts_nat[0]
+        valores_b = {**valores_a, "cole_naturaleza": b_nat_ctrl}
+    else:
+        valores_b = {
+            "cole_naturaleza": b_nat,
+            "fami_estratovivienda": b_est,
+            "fami_educacionmadre": b_edu_madre,
+            "fami_educacionpadre": b_edu_padre,
+            "cole_area_ubicacion": b_area,
+            "cole_jornada": b_jornada,
+        }
 
     pred_a, pred_b, fig_reg, fig_clf, error = predecir_escenarios_p2(valores_a, valores_b)
 

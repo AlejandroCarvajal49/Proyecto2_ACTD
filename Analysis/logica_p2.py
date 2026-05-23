@@ -2,6 +2,7 @@ import json
 import os
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
@@ -740,13 +741,18 @@ def predecir_escenarios_p2(valores_a, valores_b):
     def _to_dense(m):
         return m.toarray() if hasattr(m, "toarray") else m
 
+    def _make_row(bundle, valores):
+        # Builds DataFrame with the exact columns the model was trained on.
+        # Features not in `valores` get NaN → SimpleImputer fills with training mode.
+        cols = bundle["metadata"]["feature_columns"]
+        return pd.DataFrame([{col: valores.get(col, np.nan) for col in cols}], columns=cols)
+
     def _predecir_una(valores):
-        row = pd.DataFrame([valores])
-        X_reg = _to_dense(reg["preprocessor"].transform(row))
+        X_reg = _to_dense(reg["preprocessor"].transform(_make_row(reg, valores)))
         puntaje = float(reg["model"].predict(X_reg, verbose=0).flatten()[0])
         puntaje = max(0.0, min(500.0, puntaje))
 
-        X_clf = _to_dense(clf["preprocessor"].transform(row))
+        X_clf = _to_dense(clf["preprocessor"].transform(_make_row(clf, valores)))
         proba_bajo = float(clf["model"].predict(X_clf, verbose=0).flatten()[0])
         proba_bajo = max(0.0, min(1.0, proba_bajo))
 
