@@ -1,5 +1,5 @@
 artifact_uri: file:///C:/Users/X1GEN4/Downloads/Proyecto2_ACTD/mlruns/pregunta_2/840617066135154651/51ac100295a14b9d9d9bc106195d9834/artifacts
-end_time: null
+end_time: 1779556391132
 entry_point_name: ''
 experiment_id: '840617066135154651'
 lifecycle_stage: active
@@ -9,6 +9,6 @@ source_name: ''
 source_type: 4
 source_version: ''
 start_time: 1779556287817
-status: 1
+status: 3
 tags: []
 user_id: X1GEN4
