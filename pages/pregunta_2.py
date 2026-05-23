@@ -10,6 +10,7 @@ from Analysis.logica_p2 import (
     obtener_mlflow_info_p2, cargar_resultados_mlflow_p2,
     construir_figuras_mlflow_p2, predecir_escenarios_p2,
     OPCIONES_P2,
+    generar_figura_brecha_materias_stat, generar_figura_brecha_estratos_stat,
 )
 
 dash.register_page(__name__, path="/pregunta_2")
@@ -94,6 +95,53 @@ estrato socioeconómico y educación de los padres.
 umbral igual a la media departamental). Al incluir cole_naturaleza y fami_estratovivienda como
 entradas, el modelo permite cuantificar el efecto neto del tipo de colegio controlando por estrato.
 """)
+        ])
+    ], className="mb-4 shadow-sm"),
+
+    # ── PRUEBAS ESTADÍSTICAS ───────────────────────────────────────────────
+    dbc.Card([
+        dbc.CardBody([
+            html.H4("Pruebas estadísticas", className="mb-3"),
+            dbc.Row([
+                dbc.Col(dbc.Card([
+                    dbc.CardBody([
+                        html.H6("t-Welch punt_global (público vs privado)", className="text-muted mb-1"),
+                        html.H4("15.36 pts", className="text-danger fw-bold mb-0"),
+                        html.Small("Brecha media (privado − público) · p<0.001 *** · Cohen's d=0.31 (small)",
+                                   className="text-muted"),
+                    ])
+                ], className="shadow-sm h-100"), md=4),
+                dbc.Col(dbc.Card([
+                    dbc.CardBody([
+                        html.H6("Mayor brecha por materia: Inglés", className="text-muted mb-1"),
+                        html.H4("d = 0.56 (medium)", className="text-danger fw-bold mb-0"),
+                        html.Small("Único efecto práctico medio; resto de materias → efecto small",
+                                   className="text-muted"),
+                    ])
+                ], className="shadow-sm h-100"), md=4),
+                dbc.Col(dbc.Card([
+                    dbc.CardBody([
+                        html.H6("ANOVA punt_global ~ estrato", className="text-muted mb-1"),
+                        html.H4("F = 13 350 · p<0.001", className="text-danger fw-bold mb-0"),
+                        html.Small("Efecto escalera socioeconómico altamente significativo",
+                                   className="text-muted"),
+                    ])
+                ], className="shadow-sm h-100"), md=4),
+            ], className="mb-4"),
+
+            dbc.Row([
+                dbc.Col(dcc.Graph(figure=generar_figura_brecha_materias_stat()), md=6),
+                dbc.Col(dcc.Graph(figure=generar_figura_brecha_estratos_stat()), md=6),
+            ]),
+
+            dbc.Alert([
+                html.Strong("Hallazgo clave: "),
+                "En estratos 1 y 2 los colegios públicos superan a los privados (brechas de −13.5 y −11.4 pts). "
+                "La ventaja privada aparece solo desde estrato 3 y crece fuertemente hasta estrato 6 "
+                "(+114.8 pts, Cohen's d = 2.31 large). "
+                "Esto sugiere que el efecto 'privado = mejor' es un artefacto del nivel socioeconómico, "
+                "no de la naturaleza del colegio per se.",
+            ], color="warning", className="mt-3"),
         ])
     ], className="mb-4 shadow-sm"),
 

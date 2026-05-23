@@ -465,6 +465,89 @@ def generar_brecha_por_estrato(df, columna_materia):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# PRUEBAS ESTADÍSTICAS P2
+# ─────────────────────────────────────────────────────────────────────────────
+
+_STATS_DIR = Path(__file__).resolve().parent / "resultados_estadisticos_p2"
+
+
+def cargar_resultados_estadisticos_p2():
+    """Carga los CSV de pruebas estadísticas ya calculados por pruebas_estadisticas_p2.py."""
+    resultado = {"disponible": False}
+    try:
+        mat_path = _STATS_DIR / "brecha_por_materia.csv"
+        est_path = _STATS_DIR / "brecha_por_estrato.csv"
+        if mat_path.exists():
+            resultado["brecha_materia"] = pd.read_csv(str(mat_path))
+        if est_path.exists():
+            resultado["brecha_estrato"] = pd.read_csv(str(est_path))
+        resultado["disponible"] = mat_path.exists() or est_path.exists()
+    except Exception as exc:
+        resultado["error"] = str(exc)
+    return resultado
+
+
+def generar_figura_brecha_materias_stat():
+    """Gráfica de barras con la brecha (privado - público) por materia desde las pruebas t."""
+    res = cargar_resultados_estadisticos_p2()
+    if not res.get("disponible") or "brecha_materia" not in res:
+        return go.Figure().update_layout(title="Sin datos estadísticos (ejecutar pruebas_estadisticas_p2.py)")
+
+    df = res["brecha_materia"].sort_values("Brecha", ascending=True)
+    colores = ["#c0392b" if b > 0 else "#2166ac" for b in df["Brecha"]]
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=df["Brecha"],
+        y=df["Materia"],
+        orientation="h",
+        marker_color=colores,
+        text=[f"{b:+.2f} pts  (d={d:.2f}, {e})"
+              for b, d, e in zip(df["Brecha"], df["Cohen_d"].abs(), df["Efecto"])],
+        textposition="outside",
+    ))
+    fig.update_layout(
+        title="Brecha público vs privado por área (privado − público)",
+        xaxis_title="Diferencia de medias (pts)",
+        plot_bgcolor="white",
+        height=320,
+        font=dict(family=FONT_FAMILY, size=12),
+        margin=dict(l=180, r=120, t=50, b=40),
+    )
+    fig.add_vline(x=0, line_color="#888", line_dash="dash")
+    return fig
+
+
+def generar_figura_brecha_estratos_stat():
+    """Gráfica que muestra cómo la brecha público-privado varía por estrato."""
+    res = cargar_resultados_estadisticos_p2()
+    if not res.get("disponible") or "brecha_estrato" not in res:
+        return go.Figure().update_layout(title="Sin datos estadísticos")
+
+    df = res["brecha_estrato"]
+    colores = ["#2166ac" if b < 0 else "#c0392b" for b in df["Brecha"]]
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=df["Estrato"],
+        y=df["Brecha"],
+        marker_color=colores,
+        text=[f"{b:+.1f}" for b in df["Brecha"]],
+        textposition="outside",
+    ))
+    fig.add_hline(y=0, line_color="#888", line_dash="dash")
+    fig.update_layout(
+        title="Brecha público vs privado por estrato (azul = público supera)",
+        xaxis_title="Estrato socioeconómico",
+        yaxis_title="Diferencia de medias (privado − público)",
+        plot_bgcolor="white",
+        height=320,
+        font=dict(family=FONT_FAMILY, size=12),
+    )
+    return fig
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # MODELOS PREDICTIVOS P2
 # ─────────────────────────────────────────────────────────────────────────────
 

@@ -1,21 +1,21 @@
 {
   "task": "regresion",
   "config": {
-    "name": "mlp_32_16",
-    "layers": "32-16",
+    "name": "mlp_amp_128_64_32",
+    "layers": "128-64-32",
     "activation": "relu",
-    "dropout": 0.0,
-    "l2": 0.0,
+    "dropout": 0.2,
+    "l2": 0.0001,
     "optimizer": "adam",
-    "learning_rate": 0.005,
+    "learning_rate": 0.001,
     "loss": "mse",
-    "epochs": 50,
-    "batch_size": 512
+    "epochs": 60,
+    "batch_size": 256
   },
   "metrics": {
-    "rmse": 40.5711717267257,
-    "mae": 32.48356299388121,
-    "r2": 0.3326297321678878
+    "rmse": 40.19613238895011,
+    "mae": 32.125743776868056,
+    "r2": 0.3449110271666632
   },
   "feature_columns": [
     "cole_naturaleza",
@@ -23,8 +23,12 @@
     "fami_educacionmadre",
     "fami_educacionpadre",
     "cole_area_ubicacion",
-    "cole_jornada"
+    "cole_jornada",
+    "fami_tieneinternet",
+    "fami_tienecomputador",
+    "cole_bilingue",
+    "fami_personashogar"
   ],
   "label_mapping": null,
-  "trained_at": "2026-05-23 02:34:10"
+  "trained_at": "2026-05-23 03:22:41"
 }
