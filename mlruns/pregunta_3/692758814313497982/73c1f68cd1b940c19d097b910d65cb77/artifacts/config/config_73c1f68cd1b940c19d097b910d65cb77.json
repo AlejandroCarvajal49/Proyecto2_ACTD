@@ -1,0 +1,12 @@
+{
+  "name": "mlp_bin_3",
+  "layers": "32-16",
+  "activation": "relu",
+  "dropout": 0.1,
+  "l2": 0.001,
+  "optimizer": "sgd",
+  "learning_rate": 0.01,
+  "loss": "binary_crossentropy",
+  "epochs": 50,
+  "batch_size": 32
+}

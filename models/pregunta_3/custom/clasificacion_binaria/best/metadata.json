@@ -1,21 +1,21 @@
 {
   "task": "clasificacion_binaria",
   "config": {
-    "name": "mlp_bin_3",
-    "layers": "32-16",
+    "name": "mlp_bin_4",
+    "layers": "128-64",
     "activation": "relu",
-    "dropout": 0.1,
-    "l2": 0.001,
-    "optimizer": "sgd",
-    "learning_rate": 0.01,
+    "dropout": 0.2,
+    "l2": 0.0001,
+    "optimizer": "adam",
+    "learning_rate": 0.0008,
     "loss": "binary_crossentropy",
-    "epochs": 50,
-    "batch_size": 32
+    "epochs": 70,
+    "batch_size": 128
   },
   "metrics": {
-    "accuracy": 0.91625,
-    "f1": 0.3830570902394107,
-    "roc_auc": 0.8280199307006427
+    "accuracy": 0.90375,
+    "f1": 0.05867970660146699,
+    "roc_auc": 0.7197432527314449
   },
   "feature_columns": [
     "internet_flag",
@@ -23,8 +23,8 @@
     "tic_score",
     "tic_interaccion",
     "bilingue_flag",
-    "estrato_cat"
+    "zona"
   ],
   "label_mapping": null,
-  "trained_at": "2026-05-22 21:23:41"
+  "trained_at": "2026-05-24 18:24:29"
 }

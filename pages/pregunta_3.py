@@ -16,6 +16,7 @@ from Analysis.logica_p3 import (
     cargar_resultados_mlflow_p3,
     cargar_historial_mlflow_p3,
     seleccionar_mejores_modelos_resultados,
+    seleccionar_top_modelos_resultados,
     generar_interpretacion_p3,
     verificar_mlflow_ui,
     iniciar_mlflow_ui,
@@ -58,12 +59,14 @@ COLUMNAS_MODELOS = [
     {"name": "run_id", "id": "run_id"},
 ]
 
-COLUMNAS_MEJORES = [
-    {"name": "task", "id": "task"},
+COLUMNAS_TOP = [
+    {"name": "rank", "id": "rank"},
     {"name": "model", "id": "model"},
     {"name": "feature_set", "id": "feature_set"},
     {"name": "metric", "id": "metric"},
     {"name": "metric_value", "id": "metric_value"},
+    {"name": "variables_included", "id": "variables_included"},
+    {"name": "variables_excluded", "id": "variables_excluded"},
     {"name": "run_id", "id": "run_id"},
 ]
 
@@ -116,6 +119,66 @@ def _dropdown(component_id, label, options, value):
         ],
         md=6,
     )
+
+
+def _parse_selected_vars(selected_vars):
+    if isinstance(selected_vars, str) and selected_vars.strip():
+        return [v.strip() for v in selected_vars.split(",") if v.strip()]
+    return None
+
+
+def _infer_selected_vars(selected_vars, feature_set):
+    parsed = _parse_selected_vars(selected_vars)
+    if parsed:
+        return list(dict.fromkeys(parsed))
+    if feature_set == "tic_basico":
+        return ["internet_flag", "computador_flag", "tic_score", "tic_interaccion"]
+    if feature_set == "tic_contexto":
+        return [
+            "internet_flag",
+            "computador_flag",
+            "tic_score",
+            "tic_interaccion",
+            "bilingue_flag",
+            "estrato_cat",
+            "zona",
+            "tipo_colegio",
+            "jornada",
+            "genero",
+            "edu_padre",
+            "edu_madre",
+        ]
+    return None
+
+
+def _format_vars(values, label_map):
+    if not values:
+        return "N/D"
+    return ", ".join([label_map.get(v, v) for v in values])
+
+
+def _enriquecer_top_df(top_df):
+    if top_df.empty:
+        return top_df
+
+    label_map = {v["value"]: v["label"] for v in VARIABLES_P3}
+    all_vars = [v["value"] for v in VARIABLES_P3]
+
+    incluidos = []
+    excluidos = []
+    for _, row in top_df.iterrows():
+        selected = _infer_selected_vars(row.get("selected_vars"), row.get("feature_set"))
+        if not selected:
+            incluidos.append("N/D")
+            excluidos.append("N/D")
+            continue
+        incluidos.append(_format_vars(selected, label_map))
+        excluidos.append(_format_vars([v for v in all_vars if v not in selected], label_map))
+
+    enriched = top_df.copy()
+    enriched["variables_included"] = incluidos
+    enriched["variables_excluded"] = excluidos
+    return enriched
 
 layout = dbc.Container([
     html.H2("Competitividad y Bilinguismo: Impacto TIC", className="my-4"),
@@ -216,18 +279,64 @@ Como se distribuye el nivel de desempeno en ingles (A-, A1, A2, B1, B+) a lo lar
                 type="default",
             ),
 
-            html.H5("Mejores modelos por tarea", className="mt-3"),
+            html.H5("Top 2 modelos por tarea (MLflow - Pregunta 3)", className="mt-3"),
             dcc.Loading(
-                dash_table.DataTable(
-                    id="tabla-mejores",
-                    columns=COLUMNAS_MEJORES,
-                    data=[],
-                    page_size=6,
-                    sort_action="native",
-                    style_table={"overflowX": "auto"},
-                    style_cell={"fontSize": 12, "textAlign": "left", "padding": "6px"},
-                    style_header={"fontWeight": "bold"}
-                ),
+                dbc.Row([
+                    dbc.Col(
+                        dbc.Card(
+                            dbc.CardBody([
+                                html.H6("Regresion", className="mb-2"),
+                                dash_table.DataTable(
+                                    id="tabla-top-reg",
+                                    columns=COLUMNAS_TOP,
+                                    data=[],
+                                    page_size=2,
+                                    sort_action="native",
+                                    style_table={"overflowX": "auto"},
+                                    style_cell={"fontSize": 12, "textAlign": "left", "padding": "6px"},
+                                    style_header={"fontWeight": "bold"},
+                                ),
+                            ])
+                        ),
+                        md=4,
+                    ),
+                    dbc.Col(
+                        dbc.Card(
+                            dbc.CardBody([
+                                html.H6("Clasificacion binaria", className="mb-2"),
+                                dash_table.DataTable(
+                                    id="tabla-top-bin",
+                                    columns=COLUMNAS_TOP,
+                                    data=[],
+                                    page_size=2,
+                                    sort_action="native",
+                                    style_table={"overflowX": "auto"},
+                                    style_cell={"fontSize": 12, "textAlign": "left", "padding": "6px"},
+                                    style_header={"fontWeight": "bold"},
+                                ),
+                            ])
+                        ),
+                        md=4,
+                    ),
+                    dbc.Col(
+                        dbc.Card(
+                            dbc.CardBody([
+                                html.H6("Clasificacion multiclase", className="mb-2"),
+                                dash_table.DataTable(
+                                    id="tabla-top-multi",
+                                    columns=COLUMNAS_TOP,
+                                    data=[],
+                                    page_size=2,
+                                    sort_action="native",
+                                    style_table={"overflowX": "auto"},
+                                    style_cell={"fontSize": 12, "textAlign": "left", "padding": "6px"},
+                                    style_header={"fontWeight": "bold"},
+                                ),
+                            ])
+                        ),
+                        md=4,
+                    ),
+                ], className="mb-3"),
                 type="default",
             ),
 
@@ -370,6 +479,17 @@ Como se distribuye el nivel de desempeno en ingles (A-, A1, A2, B1, B+) a lo lar
                 "Si una variable queda excluida y el p-value es < 0.05, se considera significativa y su omision reduce el ajuste.",
                 className="text-muted d-block mb-2",
             ),
+            dcc.Store(id="ols-run-map", data={}),
+            html.Label("Corrida de regresion (MLflow)", className="fw-bold small"),
+            dcc.Dropdown(
+                id="ols-run-selector",
+                options=[],
+                value=None,
+                clearable=True,
+                placeholder="Selecciona una corrida para cargar variables",
+                className="mb-2",
+            ),
+            html.Div(id="texto-ols-corrida", className="text-muted mb-2"),
             dcc.Dropdown(
                 id="variables-ols",
                 options=VARIABLES_P3,
@@ -490,7 +610,9 @@ def actualizar_tablero(municipio_seleccionado):
 @callback(
     [
         Output("tabla-modelos", "data"),
-        Output("tabla-mejores", "data"),
+        Output("tabla-top-reg", "data"),
+        Output("tabla-top-bin", "data"),
+        Output("tabla-top-multi", "data"),
         Output("grafica-metricas-reg", "figure"),
         Output("grafica-metricas-bin", "figure"),
         Output("grafica-metricas-multi", "figure"),
@@ -498,6 +620,9 @@ def actualizar_tablero(municipio_seleccionado):
         Output("texto-modelos", "children"),
         Output("texto-interpretacion", "children"),
         Output("texto-entrenamiento", "children"),
+        Output("ols-run-selector", "options"),
+        Output("ols-run-selector", "value"),
+        Output("ols-run-map", "data"),
     ],
     [Input("btn-cargar-resultados", "n_clicks"), Input("btn-entrenar-variables", "n_clicks")],
     [State("variables-entrenar", "value")],
@@ -505,7 +630,7 @@ def actualizar_tablero(municipio_seleccionado):
 )
 def cargar_resultados(n_clicks_cargar, n_clicks_entrenar, variables_entrenar):
     if not (n_clicks_cargar or n_clicks_entrenar):
-        return [], [], go.Figure(), go.Figure(), go.Figure(), go.Figure(), "", "", ""
+        return [], [], [], [], go.Figure(), go.Figure(), go.Figure(), go.Figure(), "", "", "", [], None, {}
 
     trigger = dash.ctx.triggered_id
     mensaje_entrenamiento = ""
@@ -515,6 +640,9 @@ def cargar_resultados(n_clicks_cargar, n_clicks_entrenar, variables_entrenar):
             df_p3,
             variables_entrenar,
         )
+        if not resumen.empty:
+            resumen = resumen.copy()
+            resumen["selected_vars"] = ",".join(variables_entrenar or [])
         mensaje_entrenamiento = mensaje
     else:
         resumen, mensaje = cargar_resultados_mlflow_p3()
@@ -522,14 +650,43 @@ def cargar_resultados(n_clicks_cargar, n_clicks_entrenar, variables_entrenar):
         mejores = seleccionar_mejores_modelos_resultados(resumen)
         interpretacion = generar_interpretacion_p3(resumen, mejores, df_p3) if not resumen.empty else ""
 
-    if resumen.empty:
-        fig_reg, fig_bin, fig_multi, fig_loss = construir_figuras_comparativas(resumen, history)
-        return [], [], fig_reg, fig_bin, fig_multi, fig_loss, mensaje, interpretacion, mensaje_entrenamiento
-
     fig_reg, fig_bin, fig_multi, fig_loss = construir_figuras_comparativas(resumen, history)
+
+    top_df = seleccionar_top_modelos_resultados(resumen, top_n=2)
+    top_df = _enriquecer_top_df(top_df)
+    top_reg = top_df[top_df["task"] == "regresion"] if not top_df.empty else pd.DataFrame()
+    top_bin = top_df[top_df["task"] == "clasificacion_binaria"] if not top_df.empty else pd.DataFrame()
+    top_multi = top_df[top_df["task"] == "clasificacion_multiclase"] if not top_df.empty else pd.DataFrame()
+
+    reg_runs = resumen[resumen["task"] == "regresion"] if not resumen.empty else pd.DataFrame()
+    ols_options = []
+    ols_map = {}
+    if not reg_runs.empty:
+        for _, row in reg_runs.iterrows():
+            config_id = row.get("config_id")
+            if not config_id:
+                continue
+            label = f"{config_id} ({row.get('model')})"
+            ols_options.append({"label": label, "value": config_id})
+            ols_map[config_id] = {
+                "selected_vars": row.get("selected_vars"),
+                "feature_set": row.get("feature_set"),
+            }
+
+    ols_value = None
+    if not top_reg.empty:
+        ols_value = top_reg.iloc[0].get("config_id")
+    elif ols_options:
+        ols_value = ols_options[0]["value"]
+
+    if resumen.empty:
+        return [], [], [], [], fig_reg, fig_bin, fig_multi, fig_loss, mensaje, interpretacion, mensaje_entrenamiento, ols_options, ols_value, ols_map
+
     return (
         resumen.to_dict("records"),
-        mejores.to_dict("records"),
+        top_reg.to_dict("records"),
+        top_bin.to_dict("records"),
+        top_multi.to_dict("records"),
         fig_reg,
         fig_bin,
         fig_multi,
@@ -537,6 +694,9 @@ def cargar_resultados(n_clicks_cargar, n_clicks_entrenar, variables_entrenar):
         mensaje,
         interpretacion,
         mensaje_entrenamiento,
+        ols_options,
+        ols_value,
+        ols_map,
     )
 
 
@@ -552,6 +712,27 @@ def actualizar_estado_mlflow(n_clicks_iniciar, n_clicks_cargar):
     else:
         ok, mensaje = verificar_mlflow_ui()
     return mensaje
+
+
+@callback(
+    [
+        Output("variables-ols", "value"),
+        Output("texto-ols-corrida", "children"),
+    ],
+    [Input("ols-run-selector", "value")],
+    [State("ols-run-map", "data")],
+    prevent_initial_call=True,
+)
+def cargar_variables_ols_por_corrida(run_id, run_map):
+    if not run_id or not run_map:
+        return no_update, ""
+
+    info = run_map.get(run_id) or {}
+    selected = _infer_selected_vars(info.get("selected_vars"), info.get("feature_set"))
+    if not selected:
+        return no_update, f"No se encontraron variables guardadas para la corrida {run_id}."
+
+    return selected, f"Variables cargadas desde la corrida {run_id}."
 
 
 @callback(

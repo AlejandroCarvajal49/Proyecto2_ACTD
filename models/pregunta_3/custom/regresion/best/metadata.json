@@ -13,9 +13,9 @@
     "batch_size": 64
   },
   "metrics": {
-    "rmse": 10.777218291753142,
-    "mae": 8.238046670913697,
-    "r2": 0.27325973556769745
+    "rmse": 11.710733679381446,
+    "mae": 8.917431266784668,
+    "r2": 0.14190756627765322
   },
   "feature_columns": [
     "internet_flag",
@@ -23,8 +23,8 @@
     "tic_score",
     "tic_interaccion",
     "bilingue_flag",
-    "estrato_cat"
+    "zona"
   ],
   "label_mapping": null,
-  "trained_at": "2026-05-22 21:22:41"
+  "trained_at": "2026-05-24 18:23:09"
 }

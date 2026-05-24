@@ -530,6 +530,75 @@ def _artifact_uri_to_path(uri):
     return Path(uri)
 
 
+def _log_selected_vars_for_active_run(features, artifact_subpath="metadata"):
+    """Log selected variables both as an MLflow tag and as a small artifact for the active run."""
+    try:
+        import mlflow
+    except Exception:
+        return
+
+    if not features:
+        return
+
+    selected_vars_tag = ",".join(features)
+    try:
+        mlflow.set_tag("selected_vars", selected_vars_tag)
+    except Exception:
+        pass
+
+    # Also save as small artifact for robust retrieval
+    try:
+        run = mlflow.active_run()
+        if not run:
+            return
+        run_id = run.info.run_id
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, f"selected_vars_{run_id}.txt")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(selected_vars_tag)
+            try:
+                mlflow.log_artifact(path, artifact_path=artifact_subpath)
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
+def _load_selected_vars_from_run_id(run_id):
+    """Attempt to load selected_vars for a given run_id from tags or artifacts. Returns list[str] or None."""
+    try:
+        from mlflow.tracking import MlflowClient
+    except Exception:
+        return None
+
+    try:
+        client = MlflowClient()
+        run = client.get_run(run_id)
+        if not run:
+            return None
+        tags = run.data.tags or {}
+        sel = tags.get("selected_vars")
+        if sel:
+            return [v for v in sel.split(",") if v]
+
+        # Fallback: try to read artifact file under artifact_uri
+        art_uri = run.info.artifact_uri
+        art_path = _artifact_uri_to_path(art_uri)
+        # common artifact locations
+        cand = art_path / "metadata" / f"selected_vars_{run_id}.txt"
+        if not cand.exists():
+            cand = art_path / f"selected_vars_{run_id}.txt"
+        if cand.exists():
+            try:
+                text = cand.read_text(encoding="utf-8")
+                return [v for v in text.split(",") if v]
+            except Exception:
+                return None
+    except Exception:
+        return None
+    return None
+
+
 def cargar_resultados_mlflow_p3(max_runs=200):
     try:
         import mlflow
@@ -587,6 +656,7 @@ def cargar_resultados_mlflow_p3(max_runs=200):
                 "config_id": run_name,
                 "model": tags.get("model_name") or params.get("name"),
                 "feature_set": feature_set,
+                "selected_vars": tags.get("selected_vars"),
                 "layers": params.get("layers"),
                 "dropout": params.get("dropout"),
                 "activation": params.get("activation"),
@@ -925,6 +995,10 @@ def _ejecutar_experimentos_mlflow_p3_legacy(df, max_rows=60000, random_state=42)
                             mlflow.set_tag("task", "regresion")
                             mlflow.set_tag("feature_set", feat_name)
                             mlflow.set_tag("model_name", model_name)
+                            try:
+                                _log_selected_vars_for_active_run(features, artifact_subpath="metadata")
+                            except Exception:
+                                pass
                             mlflow.log_metric("rmse", rmse)
                             mlflow.log_metric("mae", mae)
                             mlflow.log_metric("r2", r2)
@@ -1054,6 +1128,10 @@ def _ejecutar_experimentos_mlflow_p3_legacy(df, max_rows=60000, random_state=42)
                             mlflow.set_tag("task", "clasificacion_binaria")
                             mlflow.set_tag("feature_set", feat_name)
                             mlflow.set_tag("model_name", model_name)
+                            try:
+                                _log_selected_vars_for_active_run(features, artifact_subpath="metadata")
+                            except Exception:
+                                pass
                             mlflow.log_metric("accuracy", accuracy)
                             mlflow.log_metric("f1", f1)
                             if roc_auc is not None:
@@ -1151,6 +1229,10 @@ def _ejecutar_experimentos_mlflow_p3_legacy(df, max_rows=60000, random_state=42)
                             mlflow.set_tag("task", "clasificacion_multiclase")
                             mlflow.set_tag("feature_set", feat_name)
                             mlflow.set_tag("model_name", model_name)
+                            try:
+                                _log_selected_vars_for_active_run(features, artifact_subpath="metadata")
+                            except Exception:
+                                pass
                             mlflow.log_metric("accuracy", accuracy)
                             mlflow.log_metric("f1_macro", f1_macro)
                             if loss is not None:
@@ -1671,6 +1753,7 @@ def seleccionar_top_modelos_resultados(resumen_df, top_n=2):
                     "rank": rank,
                     "model": row.get("model"),
                     "feature_set": row.get("feature_set"),
+                    "selected_vars": row.get("selected_vars"),
                     "metric": metric_label,
                     "metric_value": round(float(row.get(metric)), 4) if pd.notna(row.get(metric)) else None,
                     "config_id": row.get("config_id"),

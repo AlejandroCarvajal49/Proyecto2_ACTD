@@ -1,0 +1,12 @@
+{
+  "name": "mlp_bin_5",
+  "layers": "64-32-16",
+  "activation": "tanh",
+  "dropout": 0.15,
+  "l2": 0.001,
+  "optimizer": "rmsprop",
+  "learning_rate": 0.0007,
+  "loss": "binary_crossentropy",
+  "epochs": 60,
+  "batch_size": 64
+}

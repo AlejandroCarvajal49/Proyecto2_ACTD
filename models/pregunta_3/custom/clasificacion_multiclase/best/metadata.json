@@ -1,21 +1,21 @@
 {
   "task": "clasificacion_multiclase",
   "config": {
-    "name": "mlp_multi_1",
+    "name": "mlp_multi_3",
     "layers": "64-32",
-    "activation": "relu",
-    "dropout": 0.2,
-    "l2": 0.0001,
-    "optimizer": "adam",
-    "learning_rate": 0.001,
+    "activation": "tanh",
+    "dropout": 0.1,
+    "l2": 0.001,
+    "optimizer": "sgd",
+    "learning_rate": 0.01,
     "loss": "categorical_crossentropy",
-    "epochs": 40,
+    "epochs": 50,
     "batch_size": 64
   },
   "metrics": {
-    "accuracy": 0.52375,
-    "f1_macro": 0.3086370783815551,
-    "log_loss": 1.1027481562917127
+    "accuracy": 0.499,
+    "f1_macro": 0.15126687010413062,
+    "log_loss": 1.1673565018920649
   },
   "feature_columns": [
     "internet_flag",
@@ -23,7 +23,7 @@
     "tic_score",
     "tic_interaccion",
     "bilingue_flag",
-    "estrato_cat"
+    "zona"
   ],
   "label_mapping": [
     "A-",
@@ -32,5 +32,5 @@
     "B+",
     "B1"
   ],
-  "trained_at": "2026-05-22 21:24:12"
+  "trained_at": "2026-05-24 18:25:29"
 }

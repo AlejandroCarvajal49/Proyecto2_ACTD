@@ -1,0 +1,12 @@
+{
+  "name": "mlp_bin_4",
+  "layers": "128-64",
+  "activation": "relu",
+  "dropout": 0.2,
+  "l2": 0.0001,
+  "optimizer": "adam",
+  "learning_rate": 0.0008,
+  "loss": "binary_crossentropy",
+  "epochs": 70,
+  "batch_size": 128
+}
