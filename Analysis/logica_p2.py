@@ -42,6 +42,35 @@ MATERIAS = {
     "Puntaje Global": "punt_global"
 }
 
+ETIQUETAS_P2 = {
+    "punt_global":              "Puntaje Global",
+    "punt_ingles":              "Puntaje Inglés",
+    "punt_matematicas":         "Puntaje Matemáticas",
+    "punt_lectura_critica":     "Puntaje Lectura Crítica",
+    "punt_c_naturales":         "Puntaje Ciencias Naturales",
+    "punt_sociales_ciudadanas": "Puntaje Sociales y Ciudadanas",
+    "cole_naturaleza":          "Tipo de colegio",
+    "fami_estratovivienda":     "Estrato",
+    "cole_area_ubicacion":      "Zona",
+    "fami_educacionmadre":      "Educación madre",
+    "fami_educacionpadre":      "Educación padre",
+    "cole_jornada":             "Jornada",
+    "fami_tieneinternet":       "Acceso a Internet",
+    "fami_tienecomputador":     "Acceso a Computador",
+    "cole_bilingue":            "Colegio bilingüe",
+    "fami_personashogar":       "Personas en el hogar",
+    "OFICIAL":   "Público",
+    "NO OFICIAL": "Privado",
+    "URBANO":    "Urbano",
+    "RURAL":     "Rural",
+    "MANANA":    "Mañana",
+    "TARDE":     "Tarde",
+    "NOCHE":     "Noche",
+    "COMPLETA":  "Completa",
+    "SABATINA":  "Sabatina",
+    "UNICA":     "Única",
+}
+
 
 # CONSTANTES DE FORMATO
 FONT_FAMILY = "Segoe UI, Arial, sans-serif"
@@ -506,16 +535,19 @@ def generar_figura_brecha_materias_stat():
         text=[f"{b:+.2f} pts  (d={d:.2f}, {e})"
               for b, d, e in zip(df["Brecha"], df["Cohen_d"].abs(), df["Efecto"])],
         textposition="outside",
+        textfont=dict(size=11),
+        cliponaxis=False,
     ))
-    fig.update_layout(
-        title="Brecha público vs privado por área (privado − público)",
-        xaxis_title="Diferencia de medias (pts)",
-        plot_bgcolor="white",
-        height=320,
-        font=dict(family=FONT_FAMILY, size=12),
-        margin=dict(l=180, r=120, t=50, b=40),
-    )
     fig.add_vline(x=0, line_color="#888", line_dash="dash")
+    _layout_base(
+        fig,
+        title="Brecha en puntajes por área",
+        subtitle="Diferencia privado − público · positivo = privados superan · negativo = públicos superan",
+        height=360,
+        xaxis_title="Diferencia de medias (puntos)",
+        showlegend=False,
+    )
+    fig.update_layout(margin=dict(l=190, r=160, t=80, b=40))
     return fig
 
 
@@ -535,15 +567,18 @@ def generar_figura_brecha_estratos_stat():
         marker_color=colores,
         text=[f"{b:+.1f}" for b in df["Brecha"]],
         textposition="outside",
+        textfont=dict(size=11),
+        cliponaxis=False,
     ))
     fig.add_hline(y=0, line_color="#888", line_dash="dash")
-    fig.update_layout(
-        title="Brecha público vs privado por estrato (azul = público supera)",
+    _layout_base(
+        fig,
+        title="Brecha educativa por estrato socioeconómico",
+        subtitle="Diferencia privado − público · azul = públicos superan · rojo = privados superan",
+        height=400,
         xaxis_title="Estrato socioeconómico",
-        yaxis_title="Diferencia de medias (privado − público)",
-        plot_bgcolor="white",
-        height=320,
-        font=dict(family=FONT_FAMILY, size=12),
+        yaxis_title="Diferencia de medias (puntos)",
+        showlegend=False,
     )
     return fig
 
@@ -575,7 +610,7 @@ TARGETS_LABELS_P2 = {
 }
 
 OPCIONES_P2 = {
-    "cole_naturaleza": ["OFICIAL", "NO OFICIAL"],
+    "cole_naturaleza": ["Público", "Privado"],
     "fami_estratovivienda": [
         "Estrato 1", "Estrato 2", "Estrato 3",
         "Estrato 4", "Estrato 5", "Estrato 6", "Sin Estrato",
@@ -672,33 +707,52 @@ def construir_figuras_mlflow_p2(df_runs):
                 name=name, marker_color=color,
                 text=[f"{v:.3f}" if v else "" for v in reg[col]],
                 textposition="outside",
+                textfont=dict(size=10),
+                cliponaxis=False,
             ))
-        fig_reg.update_layout(
-            title="Regresion: RMSE y MAE por configuracion",
-            barmode="group", plot_bgcolor="white", height=300,
-            yaxis_title="Error", font=dict(size=11),
+        _layout_base(
+            fig_reg,
+            title="Regresión — error por configuración",
+            subtitle="RMSE y MAE de los modelos entrenados (menor es mejor)",
+            height=380,
+            yaxis_title="Error (puntos)",
+            showlegend=True,
         )
+        fig_reg.update_layout(
+            barmode="group",
+            margin=dict(l=70, r=40, t=90, b=120),
+        )
+        fig_reg.update_xaxes(tickangle=-40, tickfont=dict(size=10))
 
     fig_clf = go.Figure()
     if not clf.empty:
         for col, color, name in [
             ("accuracy", "#2ecc71", "Accuracy"),
-            ("precision", "#3498db", "Precision"),
+            ("precision", "#3498db", "Precisión"),
             ("recall", "#e67e22", "Recall"),
-            ("f1", "#9b59b6", "F1"),
+            ("f1", "#9b59b6", "F1-Score"),
         ]:
             fig_clf.add_trace(go.Bar(
                 x=clf["run_name"], y=clf[col].fillna(0),
                 name=name, marker_color=color,
-                text=[f"{v:.4f}" if v else "" for v in clf[col]],
+                text=[f"{v:.3f}" if v else "" for v in clf[col]],
                 textposition="outside",
+                textfont=dict(size=10),
+                cliponaxis=False,
             ))
-        fig_clf.update_layout(
-            title="Clasificacion binaria: metricas por configuracion",
-            barmode="group", plot_bgcolor="white", height=300,
-            yaxis=dict(title="Score", range=[0, 1.15]),
-            font=dict(size=11),
+        _layout_base(
+            fig_clf,
+            title="Clasificación binaria — métricas por configuración",
+            subtitle="Accuracy, Precisión, Recall y F1-Score (mayor es mejor)",
+            height=380,
+            showlegend=True,
         )
+        fig_clf.update_layout(
+            barmode="group",
+            yaxis=dict(title="Puntuación", range=[0, 1.25]),
+            margin=dict(l=70, r=40, t=90, b=120),
+        )
+        fig_clf.update_xaxes(tickangle=-40, tickfont=dict(size=10))
 
     return fig_reg, fig_clf
 
@@ -813,16 +867,26 @@ def predecir_escenarios_p2(valores_a, valores_b, target_slug: str = "global"):
     fig_reg = go.Figure()
     fig_reg.add_trace(go.Bar(
         x=labels, y=puntajes, marker_color=colores_reg,
-        text=[f"{p:.1f}" for p in puntajes], textposition="outside",
+        text=[f"{p:.1f} pts" for p in puntajes], textposition="outside",
+        textfont=dict(size=13, color="#222"),
         width=0.4,
+        cliponaxis=False,
     ))
     fig_reg.add_hline(y=250, line_dash="dash", line_color="#888",
-                      annotation_text="Umbral 250", annotation_position="top right")
-    fig_reg.update_layout(
+                      annotation_text="Umbral mínimo (250 pts)",
+                      annotation_position="top right",
+                      annotation_font=dict(size=11, color="#666"))
+    _layout_base(
+        fig_reg,
         title=f"Puntaje predicho — {target_label}",
-        yaxis=dict(title=target_label, range=[0, 530 if target_slug == "global" else 110]),
-        plot_bgcolor="white", height=320,
-        font=dict(family=FONT_FAMILY, size=12),
+        subtitle="Comparación entre escenarios A y B",
+        height=380,
+        yaxis_title=target_label,
+        showlegend=False,
+    )
+    fig_reg.update_layout(
+        yaxis=dict(range=[0, 560 if target_slug == "global" else 120]),
+        margin=dict(l=70, r=40, t=90, b=60),
     )
 
     probas_pct = [pred_a["proba_bajo"] * 100, pred_b["proba_bajo"] * 100]
@@ -832,15 +896,25 @@ def predecir_escenarios_p2(valores_a, valores_b, target_slug: str = "global"):
     fig_clf.add_trace(go.Bar(
         x=labels, y=probas_pct, marker_color=colores_clf,
         text=[f"{p:.1f}%" for p in probas_pct], textposition="outside",
+        textfont=dict(size=13, color="#222"),
         width=0.4,
+        cliponaxis=False,
     ))
     fig_clf.add_hline(y=50, line_dash="dash", line_color="#888",
-                      annotation_text="50%", annotation_position="top right")
+                      annotation_text="Umbral 50%",
+                      annotation_position="top right",
+                      annotation_font=dict(size=11, color="#666"))
+    _layout_base(
+        fig_clf,
+        title="Riesgo de bajo rendimiento (Puntaje Global < 250)",
+        subtitle="Probabilidad estimada de quedar bajo el umbral departamental",
+        height=380,
+        yaxis_title="Probabilidad (%)",
+        showlegend=False,
+    )
     fig_clf.update_layout(
-        title="Riesgo de Bajo Rendimiento (punt_global < 250)",
-        yaxis=dict(title="%", range=[0, 115]),
-        plot_bgcolor="white", height=320,
-        font=dict(family=FONT_FAMILY, size=12),
+        yaxis=dict(range=[0, 120]),
+        margin=dict(l=70, r=40, t=90, b=60),
     )
 
     return pred_a, pred_b, fig_reg, fig_clf, ""
@@ -886,14 +960,17 @@ def generar_figura_brecha_ajustada_p2():
         marker_color=colores,
         text=[f"{b:+.2f} pts" for b in resumen["brecha_media"]],
         textposition="outside",
+        textfont=dict(size=11),
+        cliponaxis=False,
     ))
     fig.add_vline(x=0, line_color="#888", line_dash="dash")
-    fig.update_layout(
+    _layout_base(
+        fig,
         title="Brecha ajustada por materia — efecto neto del tipo de colegio",
-        xaxis_title="Diferencia predicha (privado − público) · perfil base fijo",
-        plot_bgcolor="white",
-        height=300,
-        font=dict(family=FONT_FAMILY, size=12),
-        margin=dict(l=160, r=100, t=50, b=40),
+        subtitle="Predicción con perfil base fijo · controla por estrato y educación familiar",
+        height=360,
+        xaxis_title="Diferencia predicha en puntos (privado − público)",
+        showlegend=False,
     )
+    fig.update_layout(margin=dict(l=185, r=140, t=80, b=40))
     return fig

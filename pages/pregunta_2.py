@@ -9,7 +9,7 @@ from Analysis.logica_p2 import (
     generar_brecha_por_estrato, formato_periodo, MATERIAS,
     obtener_mlflow_info_p2, cargar_resultados_mlflow_p2,
     construir_figuras_mlflow_p2, predecir_escenarios_p2,
-    OPCIONES_P2, TARGETS_LABELS_P2,
+    OPCIONES_P2, TARGETS_LABELS_P2, ETIQUETAS_P2,
     generar_figura_brecha_materias_stat, generar_figura_brecha_estratos_stat,
     generar_figura_brecha_ajustada_p2,
 )
@@ -23,17 +23,25 @@ mlflow_info = obtener_mlflow_info_p2()
 OPT = OPCIONES_P2
 
 
-def _dd(component_id, label, options, value):
+def _dd(component_id, label, options, value, label_map=None):
+    opts = [{"label": (label_map.get(o, o) if label_map else o), "value": o} for o in options]
     return dbc.Col([
         html.Label(label, className="fw-bold small"),
         dcc.Dropdown(
             id=component_id,
-            options=[{"label": o, "value": o} for o in options],
+            options=opts,
             value=value,
             clearable=False,
             className="mb-2 shadow-sm",
         ),
     ], md=6)
+
+
+_DOWNLOAD_CFG = {"displaylogo": False}
+
+
+def _graph_cfg(filename):
+    return {**_DOWNLOAD_CFG, "toImageButtonOptions": {"format": "png", "filename": filename, "scale": 3}}
 
 
 def crear_tarjeta_brecha(nombre_materia):
@@ -131,12 +139,15 @@ entradas, el modelo permite cuantificar el efecto neto del tipo de colegio contr
             ], className="mb-4"),
 
             dbc.Row([
-                dbc.Col(dcc.Graph(figure=generar_figura_brecha_materias_stat()), md=6),
-                dbc.Col(dcc.Graph(figure=generar_figura_brecha_estratos_stat()), md=6),
+                dbc.Col(dcc.Graph(figure=generar_figura_brecha_materias_stat(),
+                                  config=_graph_cfg("p2_brecha_por_materia")), md=6),
+                dbc.Col(dcc.Graph(figure=generar_figura_brecha_estratos_stat(),
+                                  config=_graph_cfg("p2_brecha_por_estrato")), md=6),
             ]),
 
             dbc.Row([
-                dbc.Col(dcc.Graph(figure=generar_figura_brecha_ajustada_p2()), md=12),
+                dbc.Col(dcc.Graph(figure=generar_figura_brecha_ajustada_p2(),
+                                  config=_graph_cfg("p2_brecha_ajustada_modelo")), md=12),
             ], className="mt-2"),
 
             dbc.Alert([
@@ -187,8 +198,10 @@ entradas, el modelo permite cuantificar el efecto neto del tipo de colegio contr
             ),
 
             dbc.Row([
-                dbc.Col(dcc.Graph(id="p2-grafica-reg-mlflow", figure=go.Figure()), md=6),
-                dbc.Col(dcc.Graph(id="p2-grafica-clf-mlflow", figure=go.Figure()), md=6),
+                dbc.Col(dcc.Graph(id="p2-grafica-reg-mlflow", figure=go.Figure(),
+                                  config=_graph_cfg("p2_mlflow_regresion")), md=6),
+                dbc.Col(dcc.Graph(id="p2-grafica-clf-mlflow", figure=go.Figure(),
+                                  config=_graph_cfg("p2_mlflow_clasificacion")), md=6),
             ], className="mt-3"),
 
             dbc.Card([
@@ -238,21 +251,23 @@ entradas, el modelo permite cuantificar el efecto neto del tipo de colegio contr
                         dbc.CardBody([
                             dbc.Row([
                                 _dd("p2-a-naturaleza", "Tipo de colegio",
-                                    OPT["cole_naturaleza"], "OFICIAL"),
-                                _dd("p2-a-estrato", "Estrato vivienda",
+                                    OPT["cole_naturaleza"], "Público"),
+                                _dd("p2-a-estrato", "Estrato",
                                     OPT["fami_estratovivienda"], "Estrato 1"),
                             ]),
                             dbc.Row([
-                                _dd("p2-a-edu-madre", "Educacion madre",
+                                _dd("p2-a-edu-madre", "Educación madre",
                                     OPT["fami_educacionmadre"], "Primaria incompleta"),
-                                _dd("p2-a-edu-padre", "Educacion padre",
+                                _dd("p2-a-edu-padre", "Educación padre",
                                     OPT["fami_educacionpadre"], "Primaria incompleta"),
                             ]),
                             dbc.Row([
                                 _dd("p2-a-area", "Zona del colegio",
-                                    OPT["cole_area_ubicacion"], "RURAL"),
+                                    OPT["cole_area_ubicacion"], "RURAL",
+                                    label_map=ETIQUETAS_P2),
                                 _dd("p2-a-jornada", "Jornada",
-                                    OPT["cole_jornada"], "TARDE"),
+                                    OPT["cole_jornada"], "TARDE",
+                                    label_map=ETIQUETAS_P2),
                             ]),
                         ]),
                     ], className="shadow-sm"),
@@ -266,21 +281,23 @@ entradas, el modelo permite cuantificar el efecto neto del tipo de colegio contr
                         dbc.CardBody([
                             dbc.Row([
                                 _dd("p2-b-naturaleza", "Tipo de colegio",
-                                    OPT["cole_naturaleza"], "NO OFICIAL"),
-                                _dd("p2-b-estrato", "Estrato vivienda",
+                                    OPT["cole_naturaleza"], "Privado"),
+                                _dd("p2-b-estrato", "Estrato",
                                     OPT["fami_estratovivienda"], "Estrato 5"),
                             ]),
                             dbc.Row([
-                                _dd("p2-b-edu-madre", "Educacion madre",
+                                _dd("p2-b-edu-madre", "Educación madre",
                                     OPT["fami_educacionmadre"], "Educacion profesional completa"),
-                                _dd("p2-b-edu-padre", "Educacion padre",
+                                _dd("p2-b-edu-padre", "Educación padre",
                                     OPT["fami_educacionpadre"], "Educacion profesional completa"),
                             ]),
                             dbc.Row([
                                 _dd("p2-b-area", "Zona del colegio",
-                                    OPT["cole_area_ubicacion"], "URBANO"),
+                                    OPT["cole_area_ubicacion"], "URBANO",
+                                    label_map=ETIQUETAS_P2),
                                 _dd("p2-b-jornada", "Jornada",
-                                    OPT["cole_jornada"], "COMPLETA"),
+                                    OPT["cole_jornada"], "COMPLETA",
+                                    label_map=ETIQUETAS_P2),
                             ]),
                         ]),
                     ], className="shadow-sm"),
@@ -330,8 +347,10 @@ entradas, el modelo permite cuantificar el efecto neto del tipo de colegio contr
             ], className="mb-3"),
 
             dbc.Row([
-                dbc.Col(dcc.Graph(id="p2-grafica-sim-reg", figure=go.Figure()), md=6),
-                dbc.Col(dcc.Graph(id="p2-grafica-sim-clf", figure=go.Figure()), md=6),
+                dbc.Col(dcc.Graph(id="p2-grafica-sim-reg", figure=go.Figure(),
+                                  config=_graph_cfg("p2_simulador_puntaje")), md=6),
+                dbc.Col(dcc.Graph(id="p2-grafica-sim-clf", figure=go.Figure(),
+                                  config=_graph_cfg("p2_simulador_riesgo")), md=6),
             ]),
         ])
     ], className="mb-4 shadow-sm"),
@@ -386,7 +405,7 @@ entradas, el modelo permite cuantificar el efecto neto del tipo de colegio contr
     ),
 
     html.Hr(style={"borderColor": "#ddd"}),
-    dcc.Graph(id="grafica-boxplot-brecha"),
+    dcc.Graph(id="grafica-boxplot-brecha", config=_graph_cfg("p2_boxplots_materias")),
     html.Hr(style={"borderColor": "#ddd"}),
 
     dbc.Row([
@@ -400,7 +419,7 @@ entradas, el modelo permite cuantificar el efecto neto del tipo de colegio contr
             ),
         ], width=3)
     ], justify="center", className="mb-3"),
-    dcc.Graph(id="grafica-brecha-estrato"),
+    dcc.Graph(id="grafica-brecha-estrato", config=_graph_cfg("p2_brecha_estrato_descriptivo")),
 
     html.Hr(style={"borderColor": "#ddd"}),
 
@@ -415,7 +434,7 @@ entradas, el modelo permite cuantificar el efecto neto del tipo de colegio contr
             ),
         ], width=3)
     ], justify="center", className="mb-3"),
-    dcc.Graph(id="grafica-mapa-brecha"),
+    dcc.Graph(id="grafica-mapa-brecha", config=_graph_cfg("p2_mapa_brecha_municipios")),
     html.Br(),
 ])
 
