@@ -114,26 +114,35 @@ entradas, el modelo permite cuantificar el efecto neto del tipo de colegio contr
             dbc.Row([
                 dbc.Col(dbc.Card([
                     dbc.CardBody([
-                        html.H6("t-Welch punt_global (público vs privado)", className="text-muted mb-1"),
+                        html.H6("Prueba t de Welch — Puntaje Global", className="text-muted mb-1"),
                         html.H4("15.36 pts", className="text-danger fw-bold mb-0"),
-                        html.Small("Brecha media (privado − público) · p<0.001 *** · Cohen's d=0.31 (small)",
-                                   className="text-muted"),
+                        html.Small(
+                            "Brecha media privado − público · p<0.001 (resultado muy improbable al azar) · "
+                            "Cohen's d=0.31 (efecto pequeño pero consistente en 447 mil estudiantes)",
+                            className="text-muted",
+                        ),
                     ])
                 ], className="shadow-sm h-100"), md=4),
                 dbc.Col(dbc.Card([
                     dbc.CardBody([
-                        html.H6("Mayor brecha por materia: Inglés", className="text-muted mb-1"),
-                        html.H4("d = 0.56 (medium)", className="text-danger fw-bold mb-0"),
-                        html.Small("Único efecto práctico medio; resto de materias → efecto small",
-                                   className="text-muted"),
+                        html.H6("Prueba t de Welch — Peor área: Inglés", className="text-muted mb-1"),
+                        html.H4("d = 0.56 (efecto medio)", className="text-danger fw-bold mb-0"),
+                        html.Small(
+                            "En Inglés, ser de colegio privado equivale a más de media desviación estándar "
+                            "de ventaja; el resto de materias muestran efecto pequeño (d<0.4)",
+                            className="text-muted",
+                        ),
                     ])
                 ], className="shadow-sm h-100"), md=4),
                 dbc.Col(dbc.Card([
                     dbc.CardBody([
-                        html.H6("ANOVA punt_global ~ estrato", className="text-muted mb-1"),
+                        html.H6("ANOVA de una vía — Puntaje Global por Estrato", className="text-muted mb-1"),
                         html.H4("F = 13 350 · p<0.001", className="text-danger fw-bold mb-0"),
-                        html.Small("Efecto escalera socioeconómico altamente significativo",
-                                   className="text-muted"),
+                        html.Small(
+                            "El estrato socioeconómico explica una parte muy significativa de la variación "
+                            "en los puntajes — a mayor estrato, mayor puntaje promedio de forma escalonada",
+                            className="text-muted",
+                        ),
                     ])
                 ], className="shadow-sm h-100"), md=4),
             ], className="mb-4"),

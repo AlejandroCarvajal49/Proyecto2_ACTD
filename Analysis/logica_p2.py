@@ -696,15 +696,39 @@ def construir_figuras_mlflow_p2(df_runs):
     if df_runs.empty:
         return go.Figure(), go.Figure()
 
+    _SLUG_SHORT = {
+        "global": "Global", "matematicas": "Matem.", "ingles": "Inglés",
+        "lectura_critica": "Lectura", "c_naturales": "C.Nat.",
+        "sociales_ciudadanas": "Sociales",
+    }
+
+    def _shorten(run_name):
+        n = run_name
+        for pre in ["clf_bin_", "clf_", "reg_"]:
+            if n.startswith(pre):
+                n = n[len(pre):]
+                break
+        if "_mlp_" in n:
+            slug, arch = n.split("_mlp_", 1)
+            slug_s = _SLUG_SHORT.get(slug, slug[:7])
+            return f"{slug_s} / {arch.replace('_', '-')}"
+        return n.replace("_", "-")
+
     reg = df_runs[df_runs["task"] == "regresion"].copy()
     clf = df_runs[df_runs["task"] == "clasificacion_binaria"].copy()
 
     fig_reg = go.Figure()
     if not reg.empty:
-        for col, color, name in [("rmse", "#e74c3c", "RMSE"), ("mae", "#3498db", "MAE")]:
+        short_labels = [_shorten(n) for n in reg["run_name"]]
+        for col, color, name in [("rmse", "#b2182b", "RMSE"), ("mae", "#2166ac", "MAE")]:
             fig_reg.add_trace(go.Bar(
-                x=reg["run_name"], y=reg[col].fillna(0),
+                x=short_labels, y=reg[col].fillna(0),
                 name=name, marker_color=color,
+                customdata=list(zip(reg["run_name"], reg[col].fillna(0))),
+                hovertemplate=(
+                    "<b>%{customdata[0]}</b><br>"
+                    + name + ": %{customdata[1]:.3f}<extra></extra>"
+                ),
                 text=[f"{v:.3f}" if v else "" for v in reg[col]],
                 textposition="outside",
                 textfont=dict(size=10),
@@ -713,28 +737,37 @@ def construir_figuras_mlflow_p2(df_runs):
         _layout_base(
             fig_reg,
             title="Regresión — error por configuración",
-            subtitle="RMSE y MAE de los modelos entrenados (menor es mejor)",
-            height=380,
+            subtitle="RMSE (rojo) y MAE (azul) · menor es mejor · pasa el cursor para nombre completo",
+            height=440,
             yaxis_title="Error (puntos)",
             showlegend=True,
         )
         fig_reg.update_layout(
             barmode="group",
-            margin=dict(l=70, r=40, t=90, b=120),
+            margin=dict(l=70, r=40, t=90, b=170),
+            legend=dict(orientation="h", y=-0.32, xanchor="center", x=0.5,
+                        font=dict(size=12), bgcolor="rgba(255,255,255,0.8)",
+                        bordercolor="rgba(200,200,200,0.5)", borderwidth=1),
         )
         fig_reg.update_xaxes(tickangle=-40, tickfont=dict(size=10))
 
     fig_clf = go.Figure()
     if not clf.empty:
+        short_labels_clf = [_shorten(n) for n in clf["run_name"]]
         for col, color, name in [
-            ("accuracy", "#2ecc71", "Accuracy"),
-            ("precision", "#3498db", "Precisión"),
-            ("recall", "#e67e22", "Recall"),
-            ("f1", "#9b59b6", "F1-Score"),
+            ("accuracy",  "#2166ac", "Accuracy"),
+            ("precision", "#74add1", "Precisión"),
+            ("recall",    "#d6604d", "Recall"),
+            ("f1",        "#b2182b", "F1-Score"),
         ]:
             fig_clf.add_trace(go.Bar(
-                x=clf["run_name"], y=clf[col].fillna(0),
+                x=short_labels_clf, y=clf[col].fillna(0),
                 name=name, marker_color=color,
+                customdata=list(zip(clf["run_name"], clf[col].fillna(0))),
+                hovertemplate=(
+                    "<b>%{customdata[0]}</b><br>"
+                    + name + ": %{customdata[1]:.3f}<extra></extra>"
+                ),
                 text=[f"{v:.3f}" if v else "" for v in clf[col]],
                 textposition="outside",
                 textfont=dict(size=10),
@@ -743,14 +776,17 @@ def construir_figuras_mlflow_p2(df_runs):
         _layout_base(
             fig_clf,
             title="Clasificación binaria — métricas por configuración",
-            subtitle="Accuracy, Precisión, Recall y F1-Score (mayor es mejor)",
-            height=380,
+            subtitle="Accuracy, Precisión, Recall y F1-Score · mayor es mejor",
+            height=440,
             showlegend=True,
         )
         fig_clf.update_layout(
             barmode="group",
             yaxis=dict(title="Puntuación", range=[0, 1.25]),
-            margin=dict(l=70, r=40, t=90, b=120),
+            margin=dict(l=70, r=40, t=90, b=170),
+            legend=dict(orientation="h", y=-0.32, xanchor="center", x=0.5,
+                        font=dict(size=12), bgcolor="rgba(255,255,255,0.8)",
+                        bordercolor="rgba(200,200,200,0.5)", borderwidth=1),
         )
         fig_clf.update_xaxes(tickangle=-40, tickfont=dict(size=10))
 
@@ -862,24 +898,27 @@ def predecir_escenarios_p2(valores_a, valores_b, target_slug: str = "global"):
 
     labels = ["Escenario A", "Escenario B"]
     puntajes = [pred_a["puntaje"], pred_b["puntaje"]]
-    colores_reg = ["#1f77b4" if p >= 250 else "#c0392b" for p in puntajes]
+    colores_sim = ["#b2182b", "#2166ac"]
 
     fig_reg = go.Figure()
     fig_reg.add_trace(go.Bar(
-        x=labels, y=puntajes, marker_color=colores_reg,
+        x=labels, y=puntajes, marker_color=colores_sim,
         text=[f"{p:.1f} pts" for p in puntajes], textposition="outside",
         textfont=dict(size=13, color="#222"),
         width=0.4,
         cliponaxis=False,
     ))
-    fig_reg.add_hline(y=250, line_dash="dash", line_color="#888",
-                      annotation_text="Umbral mínimo (250 pts)",
-                      annotation_position="top right",
-                      annotation_font=dict(size=11, color="#666"))
+    fig_reg.add_hline(y=250, line_dash="dash", line_color="#888")
+    fig_reg.add_annotation(
+        x=0.99, xref="paper", y=250, yref="y",
+        text="Umbral mínimo (250 pts)", showarrow=False,
+        xanchor="right", yanchor="bottom",
+        font=dict(size=11, color="#666"),
+    )
     _layout_base(
         fig_reg,
         title=f"Puntaje predicho — {target_label}",
-        subtitle="Comparación entre escenarios A y B",
+        subtitle="Escenario A (rojo) vs Escenario B (azul)",
         height=380,
         yaxis_title=target_label,
         showlegend=False,
@@ -890,20 +929,22 @@ def predecir_escenarios_p2(valores_a, valores_b, target_slug: str = "global"):
     )
 
     probas_pct = [pred_a["proba_bajo"] * 100, pred_b["proba_bajo"] * 100]
-    colores_clf = ["#c0392b" if p > 50 else "#27ae60" for p in probas_pct]
 
     fig_clf = go.Figure()
     fig_clf.add_trace(go.Bar(
-        x=labels, y=probas_pct, marker_color=colores_clf,
+        x=labels, y=probas_pct, marker_color=colores_sim,
         text=[f"{p:.1f}%" for p in probas_pct], textposition="outside",
         textfont=dict(size=13, color="#222"),
         width=0.4,
         cliponaxis=False,
     ))
-    fig_clf.add_hline(y=50, line_dash="dash", line_color="#888",
-                      annotation_text="Umbral 50%",
-                      annotation_position="top right",
-                      annotation_font=dict(size=11, color="#666"))
+    fig_clf.add_hline(y=50, line_dash="dash", line_color="#888")
+    fig_clf.add_annotation(
+        x=0.99, xref="paper", y=50, yref="y",
+        text="Umbral 50%", showarrow=False,
+        xanchor="right", yanchor="bottom",
+        font=dict(size=11, color="#666"),
+    )
     _layout_base(
         fig_clf,
         title="Riesgo de bajo rendimiento (Puntaje Global < 250)",
