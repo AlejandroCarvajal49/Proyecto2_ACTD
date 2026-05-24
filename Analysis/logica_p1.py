@@ -251,7 +251,7 @@ def generar_mapa_pib_puntaje(df, municipio):
 #   - metadata_modelos.pkl          (umbral P25, columnas, métricas)
 # ===========================================================================
 
-MODELS_DIR = "Models"
+MODELS_DIR = "models"
 
 # Variables que el usuario podrá ingresar en el simulador del tablero.
 COLUMNAS_CATEGORICAS_P2 = [
@@ -271,14 +271,61 @@ COLUMNAS_NUMERICAS_P2 = [
 
 
 # ---------------------------------------------------------------------------
-# 2.1 CARGA DE MODELOS PRE-ENTRENADOS
+# 2.1 ARQUITECTURA Y CARGA DE MODELOS PRE-ENTRENADOS
 # ---------------------------------------------------------------------------
+#
+# Los modelos se persisten como pesos puros (.weights.h5) en lugar de modelos
+# serializados completos (.keras). Esto evita que un cambio de minor version
+# de Keras rompa la carga (p. ej., campos nuevos como `quantization_config`).
+# La arquitectura es la fuente de verdad y vive en este modulo, asi que tanto
+# el script de entrenamiento como el tablero la reconstruyen identicamente.
+
+def build_modelo_regresion(input_dim, compile_model=True):
+    """Crea la red de regresion. `compile_model=False` al solo hacer inferencia
+    para evitar warnings de carga de estado de optimizador no usado."""
+    modelo = tf.keras.Sequential([
+        tf.keras.layers.Input(shape=(input_dim,)),
+        tf.keras.layers.Dense(128, activation="relu"),
+        tf.keras.layers.Dropout(0.2),
+        tf.keras.layers.Dense(64, activation="relu"),
+        tf.keras.layers.Dropout(0.2),
+        tf.keras.layers.Dense(32, activation="relu"),
+        tf.keras.layers.Dense(1, activation="linear"),
+    ])
+    if compile_model:
+        modelo.compile(
+            optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
+            loss="mse",
+            metrics=["mae"],
+        )
+    return modelo
+
+
+def build_modelo_clasificacion(input_dim, compile_model=True):
+    modelo = tf.keras.Sequential([
+        tf.keras.layers.Input(shape=(input_dim,)),
+        tf.keras.layers.Dense(128, activation="relu"),
+        tf.keras.layers.Dropout(0.3),
+        tf.keras.layers.Dense(64, activation="relu"),
+        tf.keras.layers.Dropout(0.3),
+        tf.keras.layers.Dense(32, activation="relu"),
+        tf.keras.layers.Dense(1, activation="sigmoid"),
+    ])
+    if compile_model:
+        modelo.compile(
+            optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
+            loss="binary_crossentropy",
+            metrics=["accuracy", tf.keras.metrics.AUC(name="auc")],
+        )
+    return modelo
+
 
 def cargar_artefactos_p2():
     """
-    Carga modelos pre-entrenados y preprocesadores desde disco.
+    Carga preprocesadores + metadata desde disco y reconstruye los modelos
+    de regresion y clasificacion cargando pesos pre-entrenados.
     Devuelve un dict con flag 'disponible' para que el tablero muestre
-    un mensaje informativo si los archivos no existen todavía.
+    un mensaje informativo si los archivos no existen todavia.
     """
     artefactos = {
         "modelo_reg": None,
@@ -291,24 +338,35 @@ def cargar_artefactos_p2():
     }
 
     rutas = {
-        "modelo_reg": os.path.join(MODELS_DIR, "regresion_puntaje.keras"),
-        "modelo_clf": os.path.join(MODELS_DIR, "clasificacion_prioridad.keras"),
+        "pesos_reg": os.path.join(MODELS_DIR, "regresion_puntaje.weights.h5"),
+        "pesos_clf": os.path.join(MODELS_DIR, "clasificacion_prioridad.weights.h5"),
         "preproc_reg": os.path.join(MODELS_DIR, "preprocesador_reg.pkl"),
         "preproc_clf": os.path.join(MODELS_DIR, "preprocesador_clf.pkl"),
         "metadata": os.path.join(MODELS_DIR, "metadata_modelos.pkl"),
     }
 
     try:
-        artefactos["modelo_reg"] = tf.keras.models.load_model(rutas["modelo_reg"])
-        artefactos["modelo_clf"] = tf.keras.models.load_model(rutas["modelo_clf"])
+        metadata = joblib.load(rutas["metadata"])
+        input_dim_reg = int(metadata["input_dim_reg"])
+        input_dim_clf = int(metadata["input_dim_clf"])
+
+        # compile_model=False en carga: solo hacemos inferencia.
+        modelo_reg = build_modelo_regresion(input_dim_reg, compile_model=False)
+        modelo_reg.load_weights(rutas["pesos_reg"])
+
+        modelo_clf = build_modelo_clasificacion(input_dim_clf, compile_model=False)
+        modelo_clf.load_weights(rutas["pesos_clf"])
+
+        artefactos["modelo_reg"] = modelo_reg
+        artefactos["modelo_clf"] = modelo_clf
         artefactos["preproc_reg"] = joblib.load(rutas["preproc_reg"])
         artefactos["preproc_clf"] = joblib.load(rutas["preproc_clf"])
-        artefactos["metadata"] = joblib.load(rutas["metadata"])
+        artefactos["metadata"] = metadata
         artefactos["disponible"] = True
     except FileNotFoundError as e:
         artefactos["error"] = (
             f"No se encontraron los modelos pre-entrenados en '{MODELS_DIR}/'. "
-            f"Ejecute primero el notebook de entrenamiento. Detalle: {e}"
+            f"Ejecute el script de entrenamiento. Detalle: {e}"
         )
     except Exception as e:
         artefactos["error"] = f"Error al cargar modelos: {e}"

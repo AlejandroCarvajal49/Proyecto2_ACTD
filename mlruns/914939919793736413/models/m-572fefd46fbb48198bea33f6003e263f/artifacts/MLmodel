@@ -1,0 +1,22 @@
+artifact_path: file:C:/Users/santi/OneDrive/Documents/Andes/Octavo Semestre/Analitica/Proyecto2_ACTD/mlruns/914939919793736413/models/m-572fefd46fbb48198bea33f6003e263f/artifacts
+flavors:
+  python_function:
+    data: data
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.tensorflow
+    python_version: 3.13.11
+  tensorflow:
+    code: null
+    data: data
+    keras_version: 2.21.0
+    model_type: keras
+    save_format: tf
+mlflow_version: 3.12.0
+model_id: m-572fefd46fbb48198bea33f6003e263f
+model_size_bytes: 231343
+model_uuid: m-572fefd46fbb48198bea33f6003e263f
+prompts: null
+run_id: 413d0b37f77e4d0d9b0e2ad0f65d1172
+utc_time_created: '2026-05-24 18:12:53.586006'

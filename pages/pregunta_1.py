@@ -91,100 +91,10 @@ layout = dbc.Container([
 
     # ========================================================================
     # ========================================================================
-    # PARTE 1 - PROYECTO 1: ANÁLISIS DESCRIPTIVO
+    # PARTE 2 - PROYECTO 2: MODELOS PREDICTIVOS  (se muestra primero)
     # ========================================================================
     # ========================================================================
 
-    html.H3("Análisis Descriptivo (Proyecto 1)",
-            className="mt-4 mb-3 text-primary fw-bold"),
-
-    # Filtro
-    dbc.Row([
-        dbc.Col([
-            html.Label("Focalizar Análisis por Municipio:", className="fw-bold"),
-            dcc.Dropdown(
-                id='filtro-municipio-p1',
-                options=[{'label': m, 'value': m} for m in lista_municipios],
-                value='TODOS',
-                clearable=False,
-                className="mb-3 shadow-sm"
-            )
-        ], md=4)
-    ]),
-
-    # Tarjeta de Insights y Estadísticas
-    dbc.Row([
-        dbc.Col([
-            dbc.Card([
-                dbc.CardBody([
-                    html.H5("Hallazgos e Insights (Prueba T-Student)",
-                            className="card-title text-success fw-bold"),
-                    html.P(id='texto-insight-p1', className="card-text fs-5")
-                ])
-            ], className="mb-4 shadow-sm border-success")
-        ], md=12)
-    ]),
-
-    # Mapa interactivo
-    dbc.Row([
-        dbc.Col([
-            dbc.Card([
-                dbc.CardBody([dcc.Graph(id='grafica-mapa-p1')])
-            ], className="mb-4 shadow-sm")
-        ], md=12)
-    ]),
-
-    # Boxplot y barras con error
-    dbc.Row([
-        dbc.Col([
-            dbc.Card([
-                dbc.CardHeader("Comparación de Distribución (Urbano vs Rural)",
-                               className="fw-bold bg-light"),
-                dbc.CardBody([dcc.Graph(id='grafica-boxplot-p1')])
-            ], className="mb-4 shadow-sm")
-        ], md=6),
-
-        dbc.Col([
-            dbc.Card([
-                dbc.CardHeader("Promedios con Desviación Estándar",
-                               className="fw-bold bg-light"),
-                dbc.CardBody([
-                    dcc.Graph(id='grafica-barras-error-p1'),
-                    html.Small(
-                        "Nota: Las líneas sobre las barras indican la variabilidad "
-                        "de los datos (Desviación Estándar).",
-                        className="text-muted text-center d-block mt-2"
-                    )
-                ])
-            ], className="mb-4 shadow-sm")
-        ], md=6)
-    ]),
-
-    # Dispersión del PIB
-    dbc.Row([
-        dbc.Col([
-            dbc.Card([
-                dbc.CardHeader("Impacto del PIB en la Brecha Educativa (Global Departamental)",
-                               className="fw-bold bg-light"),
-                dbc.CardBody([
-                    dcc.Graph(figure=grafica_pib_estatica),
-                    html.Small(
-                        "Nota: Valores positivos en Y indican ventaja urbana. "
-                        "Muestra si los municipios más pobres sufren brechas más grandes.",
-                        className="text-muted text-center d-block mt-2"
-                    )
-                ])
-            ], className="mb-4 shadow-sm")
-        ], md=12)
-    ]),
-
-    # ========================================================================
-    # ========================================================================
-    # PARTE 2 - PROYECTO 2: MODELOS PREDICTIVOS
-    # ========================================================================
-    # ========================================================================
-
-    html.Hr(className="my-5"),
     html.H3("Modelos Predictivos - Simulador (Proyecto 2)",
             className="mt-4 mb-3 text-primary fw-bold"),
     dbc.Alert(
@@ -363,6 +273,96 @@ layout = dbc.Container([
                 ]),
             ], className="mb-4 shadow-sm"),
         ], md=12),
+    ]),
+
+    # ========================================================================
+    # ========================================================================
+    # PARTE 1 - PROYECTO 1: ANÁLISIS DESCRIPTIVO (se muestra al final)
+    # ========================================================================
+    # ========================================================================
+
+    html.Hr(className="my-5"),
+    html.H3("Análisis Descriptivo (Proyecto 1)",
+            className="mt-4 mb-3 text-primary fw-bold"),
+
+    # Filtro
+    dbc.Row([
+        dbc.Col([
+            html.Label("Focalizar Análisis por Municipio:", className="fw-bold"),
+            dcc.Dropdown(
+                id='filtro-municipio-p1',
+                options=[{'label': m, 'value': m} for m in lista_municipios],
+                value='TODOS',
+                clearable=False,
+                className="mb-3 shadow-sm"
+            )
+        ], md=4)
+    ]),
+
+    # Tarjeta de Insights y Estadísticas
+    dbc.Row([
+        dbc.Col([
+            dbc.Card([
+                dbc.CardBody([
+                    html.H5("Hallazgos e Insights (Prueba T-Student)",
+                            className="card-title text-success fw-bold"),
+                    html.P(id='texto-insight-p1', className="card-text fs-5")
+                ])
+            ], className="mb-4 shadow-sm border-success")
+        ], md=12)
+    ]),
+
+    # Mapa interactivo
+    dbc.Row([
+        dbc.Col([
+            dbc.Card([
+                dbc.CardBody([dcc.Graph(id='grafica-mapa-p1')])
+            ], className="mb-4 shadow-sm")
+        ], md=12)
+    ]),
+
+    # Boxplot y barras con error
+    dbc.Row([
+        dbc.Col([
+            dbc.Card([
+                dbc.CardHeader("Comparación de Distribución (Urbano vs Rural)",
+                               className="fw-bold bg-light"),
+                dbc.CardBody([dcc.Graph(id='grafica-boxplot-p1')])
+            ], className="mb-4 shadow-sm")
+        ], md=6),
+
+        dbc.Col([
+            dbc.Card([
+                dbc.CardHeader("Promedios con Desviación Estándar",
+                               className="fw-bold bg-light"),
+                dbc.CardBody([
+                    dcc.Graph(id='grafica-barras-error-p1'),
+                    html.Small(
+                        "Nota: Las líneas sobre las barras indican la variabilidad "
+                        "de los datos (Desviación Estándar).",
+                        className="text-muted text-center d-block mt-2"
+                    )
+                ])
+            ], className="mb-4 shadow-sm")
+        ], md=6)
+    ]),
+
+    # Dispersión del PIB
+    dbc.Row([
+        dbc.Col([
+            dbc.Card([
+                dbc.CardHeader("Impacto del PIB en la Brecha Educativa (Global Departamental)",
+                               className="fw-bold bg-light"),
+                dbc.CardBody([
+                    dcc.Graph(figure=grafica_pib_estatica),
+                    html.Small(
+                        "Nota: Valores positivos en Y indican ventaja urbana. "
+                        "Muestra si los municipios más pobres sufren brechas más grandes.",
+                        className="text-muted text-center d-block mt-2"
+                    )
+                ])
+            ], className="mb-4 shadow-sm")
+        ], md=12)
     ]),
 
 ], fluid=True)

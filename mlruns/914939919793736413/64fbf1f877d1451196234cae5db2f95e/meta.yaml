@@ -1,0 +1,14 @@
+artifact_uri: file:C:/Users/santi/OneDrive/Documents/Andes/Octavo Semestre/Analitica/Proyecto2_ACTD/mlruns/914939919793736413/64fbf1f877d1451196234cae5db2f95e/artifacts
+end_time: 1779646432232
+entry_point_name: ''
+experiment_id: '914939919793736413'
+lifecycle_stage: active
+run_id: 64fbf1f877d1451196234cae5db2f95e
+run_name: entrenamiento_p1
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1779646348753
+status: 3
+tags: []
+user_id: santi

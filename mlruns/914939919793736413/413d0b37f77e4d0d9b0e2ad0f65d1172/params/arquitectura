@@ -1,0 +1,1 @@
+Dense(128)->Dropout(0.2)->Dense(64)->Dropout(0.2)->Dense(32)->Dense(1,linear)

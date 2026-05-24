@@ -1,0 +1,14 @@
+artifact_uri: file:C:/Users/santi/OneDrive/Documents/Andes/Octavo Semestre/Analitica/Proyecto2_ACTD/mlruns/914939919793736413/01dd53b7ebea4a1ab69cb021347f242e/artifacts
+end_time: 1779646431919
+entry_point_name: ''
+experiment_id: '914939919793736413'
+lifecycle_stage: active
+run_id: 01dd53b7ebea4a1ab69cb021347f242e
+run_name: clasificacion_prioridad
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1779646395261
+status: 3
+tags: []
+user_id: santi
