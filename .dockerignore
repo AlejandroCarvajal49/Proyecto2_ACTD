@@ -1,0 +1,29 @@
+# Archivos basura / cache
+__pycache__/
+*.pyc
+*.pyo
+.git/
+.gitattributes
+.gitignore
+.claude/
+.vscode/
+.idea/
+.venv/
+venv/
+env/
+
+# Datos crudos pesados (~500 MB) - solo necesitamos el clean
+Data/saber11_Antioquia_raw.csv
+Data/municipios_unicos.bak.csv
+Data/PIB_municipios.xlsx
+
+# Documentos y entregables (no necesarios en el contenedor)
+*.docx
+*.pptx
+*.pdf
+screenshots_p1/
+Entregable*
+
+# Scripts auxiliares de generación (no necesarios en runtime)
+Analysis/_generar_entregables_p1.py
+Analysis/_capturar_pantallazos.py
