@@ -1,0 +1,34 @@
+{
+  "task": "clasificacion_binaria",
+  "config": {
+    "name": "clf_64_32",
+    "layers": "64-32",
+    "activation": "relu",
+    "dropout": 0.1,
+    "l2": 0.0,
+    "optimizer": "adam",
+    "learning_rate": 0.001,
+    "epochs": 60,
+    "batch_size": 256
+  },
+  "metrics": {
+    "accuracy": 0.698308344234618,
+    "precision": 0.7145521597219279,
+    "recall": 0.7138410722225751,
+    "f1": 0.7141964389742721
+  },
+  "feature_columns": [
+    "cole_naturaleza",
+    "fami_estratovivienda",
+    "fami_educacionmadre",
+    "fami_educacionpadre",
+    "cole_area_ubicacion",
+    "cole_jornada",
+    "fami_tieneinternet",
+    "fami_tienecomputador",
+    "cole_bilingue",
+    "fami_personashogar"
+  ],
+  "label_mapping": null,
+  "trained_at": "2026-05-23 04:04:30"
+}

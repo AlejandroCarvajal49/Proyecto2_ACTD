@@ -1,0 +1,14 @@
+artifact_uri: file:///C:/Users/X1GEN4/Downloads/Proyecto2_ACTD/mlruns/pregunta_2/840617066135154651/fe314b336a844f509c1ade51e7e3c26a/artifacts
+end_time: 1779556055602
+entry_point_name: ''
+experiment_id: '840617066135154651'
+lifecycle_stage: active
+run_id: fe314b336a844f509c1ade51e7e3c26a
+run_name: reg_sociales_ciudadanas_mlp_64_32
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1779555946040
+status: 3
+tags: []
+user_id: X1GEN4

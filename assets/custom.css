@@ -1,0 +1,17 @@
+/* Gray range slider for #filtro-periodo-timeline */
+#filtro-periodo-timeline .rc-slider-track {
+    background-color: #888;
+}
+#filtro-periodo-timeline .rc-slider-handle {
+    border-color: #888;
+    background-color: #888;
+}
+#filtro-periodo-timeline .rc-slider-handle:hover,
+#filtro-periodo-timeline .rc-slider-handle:active {
+    border-color: #555;
+    background-color: #555;
+    box-shadow: 0 0 0 5px rgba(136, 136, 136, 0.2);
+}
+#filtro-periodo-timeline .rc-slider-dot-active {
+    border-color: #888;
+}

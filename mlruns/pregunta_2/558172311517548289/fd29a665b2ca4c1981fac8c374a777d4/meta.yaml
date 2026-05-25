@@ -1,0 +1,14 @@
+artifact_uri: file:///C:/Users/X1GEN4/Downloads/Proyecto2_ACTD/mlruns/pregunta_2/558172311517548289/fd29a665b2ca4c1981fac8c374a777d4/artifacts
+end_time: 1779508779633
+entry_point_name: ''
+experiment_id: '558172311517548289'
+lifecycle_stage: active
+run_id: fd29a665b2ca4c1981fac8c374a777d4
+run_name: p2_clf_clf_64_32
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1779508640886
+status: 3
+tags: []
+user_id: X1GEN4

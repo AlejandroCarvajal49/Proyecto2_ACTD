@@ -1,0 +1,75 @@
+
+======================================================================
+PRUEBA 1 — t de Welch: punt_global público vs privado
+======================================================================
+Hipótesis nula: las medias de punt_global son iguales entre colegios públicos y privados.
+Se usa la variante de Welch porque los tamaños de grupo son muy distintos (3:1).
+  n_publico  = 332,679
+  n_privado  = 114,514
+  Media público  = 245.53
+  Media privado  = 260.89
+  Diferencia (priv - pub) = 15.36 pts
+  t = -79.9173
+  p<0.001 *** (altamente significativo)
+  Cohen's d = -0.3123 (small)
+
+  Interpretación: la diferencia de medias es estadísticamente significativa
+  si p<0.05. El tamaño del efecto (Cohen's d) indica su relevancia práctica.
+
+======================================================================
+PRUEBA 2 — t de Welch por materia (¿en qué área hay mayor rezago?)
+======================================================================
+Para cada área se calcula la brecha de medias (privado - público),
+el p-valor y Cohen's d. Ordenado de mayor a menor brecha.
+              Materia  Público  Privado  Brecha         t  p_valor  Cohen_d Efecto
+       Puntaje Global   245.53   260.89   15.36  -79.9173      0.0  -0.3123  small
+               Inglés    48.06    54.97    6.91 -134.0886      0.0  -0.5635 medium
+Sociales y Ciudadanas    48.19    51.30    3.10  -73.4520      0.0  -0.2726  small
+          Matemáticas    48.87    51.88    3.01  -65.7399      0.0  -0.2528  small
+   Ciencias Naturales    48.32    51.02    2.70  -67.3727      0.0  -0.2597  small
+      Lectura Crítica    51.39    53.58    2.19  -56.9761      0.0  -0.2137  small
+
+  Interpretación: cuanto mayor la brecha, mayor el rezago del colegio público
+  en esa área. Un Cohen's d 'medium' o 'large' indica relevancia práctica.
+
+  Guardado: C:\Users\X1GEN4\Downloads\Proyecto2_ACTD\Analysis\resultados_estadisticos_p2\brecha_por_materia.csv
+
+======================================================================
+PRUEBA 3 — t de Welch estratificada (¿la brecha persiste al controlar por estrato?)
+======================================================================
+Si la brecha público-privado se mantiene dentro de cada estrato,
+significa que el tipo de colegio tiene un efecto NETO independiente del nivel socioeconómico.
+  Estrato  Público  Privado  Brecha       p_valor  Cohen_d Efecto  n_pub  n_priv
+Estrato 1   232.02   218.53  -13.49  0.000000e+00   0.3356  small  92088   16458
+Estrato 2   248.41   237.01  -11.40  0.000000e+00   0.2572  small 141782   31955
+Estrato 3   260.68   270.58    9.90 1.612260e-184  -0.2053  small  75577   32198
+Estrato 4   254.46   296.78   42.32  0.000000e+00  -0.8131  large   7659   13617
+Estrato 5   237.24   311.58   74.34  0.000000e+00  -1.4349  large   1739    9482
+Estrato 6   209.65   324.48  114.83  0.000000e+00  -2.3064  large    667    5845
+
+  Interpretación: si p<0.05 en todos los estratos, la brecha existe
+  independientemente del nivel socioeconómico del estudiante.
+
+  Guardado: C:\Users\X1GEN4\Downloads\Proyecto2_ACTD\Analysis\resultados_estadisticos_p2\brecha_por_estrato.csv
+
+======================================================================
+PRUEBA 4 — ANOVA de una vía: punt_global entre los 6 estratos
+======================================================================
+Valida el 'efecto escalera': a mayor estrato, mayor puntaje promedio.
+H0: las medias de punt_global son iguales en todos los estratos.
+
+  Medias por estrato:
+    Estrato 1: 229.98 (n=108,546)
+    Estrato 2: 246.32 (n=173,737)
+    Estrato 3: 263.64 (n=107,775)
+    Estrato 4: 281.55 (n=21,276)
+    Estrato 5: 300.06 (n=11,221)
+    Estrato 6: 312.72 (n=6,512)
+
+  F = 13350.7894
+  p<0.001 *** (altamente significativo)
+
+  Interpretación: si p<0.05, existe al menos una diferencia significativa
+  entre estratos. Un F grande confirma el efecto escalera socioeconómico.
+
+  Guardado: C:\Users\X1GEN4\Downloads\Proyecto2_ACTD\Analysis\resultados_estadisticos_p2\anova_estratos.csv
