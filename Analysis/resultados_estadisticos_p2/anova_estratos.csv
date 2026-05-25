@@ -1,0 +1,2 @@
+prueba,F,p_valor,interpretacion
+ANOVA punt_global ~ estrato,13350.7894,0.0,p<0.001 *** (altamente significativo)

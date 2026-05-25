@@ -1,8 +1,12 @@
+import json
+import os
+from pathlib import Path
+
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
-import os
 
 
 # CARGA DE DATOS
@@ -36,6 +40,35 @@ MATERIAS = {
     "Ciencias Naturales": "punt_c_naturales",
     "Lectura Crítica": "punt_lectura_critica",
     "Puntaje Global": "punt_global"
+}
+
+ETIQUETAS_P2 = {
+    "punt_global":              "Puntaje Global",
+    "punt_ingles":              "Puntaje Inglés",
+    "punt_matematicas":         "Puntaje Matemáticas",
+    "punt_lectura_critica":     "Puntaje Lectura Crítica",
+    "punt_c_naturales":         "Puntaje Ciencias Naturales",
+    "punt_sociales_ciudadanas": "Puntaje Sociales y Ciudadanas",
+    "cole_naturaleza":          "Tipo de colegio",
+    "fami_estratovivienda":     "Estrato",
+    "cole_area_ubicacion":      "Zona",
+    "fami_educacionmadre":      "Educación madre",
+    "fami_educacionpadre":      "Educación padre",
+    "cole_jornada":             "Jornada",
+    "fami_tieneinternet":       "Acceso a Internet",
+    "fami_tienecomputador":     "Acceso a Computador",
+    "cole_bilingue":            "Colegio bilingüe",
+    "fami_personashogar":       "Personas en el hogar",
+    "OFICIAL":   "Público",
+    "NO OFICIAL": "Privado",
+    "URBANO":    "Urbano",
+    "RURAL":     "Rural",
+    "MANANA":    "Mañana",
+    "TARDE":     "Tarde",
+    "NOCHE":     "Noche",
+    "COMPLETA":  "Completa",
+    "SABATINA":  "Sabatina",
+    "UNICA":     "Única",
 }
 
 
@@ -458,4 +491,553 @@ def generar_brecha_por_estrato(df, columna_materia):
         legend=dict(y=-0.2)
     )
 
+    return fig
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PRUEBAS ESTADÍSTICAS P2
+# ─────────────────────────────────────────────────────────────────────────────
+
+_STATS_DIR = Path(__file__).resolve().parent / "resultados_estadisticos_p2"
+
+
+def cargar_resultados_estadisticos_p2():
+    """Carga los CSV de pruebas estadísticas ya calculados por pruebas_estadisticas_p2.py."""
+    resultado = {"disponible": False}
+    try:
+        mat_path = _STATS_DIR / "brecha_por_materia.csv"
+        est_path = _STATS_DIR / "brecha_por_estrato.csv"
+        if mat_path.exists():
+            resultado["brecha_materia"] = pd.read_csv(str(mat_path))
+        if est_path.exists():
+            resultado["brecha_estrato"] = pd.read_csv(str(est_path))
+        resultado["disponible"] = mat_path.exists() or est_path.exists()
+    except Exception as exc:
+        resultado["error"] = str(exc)
+    return resultado
+
+
+def generar_figura_brecha_materias_stat():
+    """Gráfica de barras con la brecha (privado - público) por materia desde las pruebas t."""
+    res = cargar_resultados_estadisticos_p2()
+    if not res.get("disponible") or "brecha_materia" not in res:
+        return go.Figure().update_layout(title="Sin datos estadísticos (ejecutar pruebas_estadisticas_p2.py)")
+
+    df = res["brecha_materia"].sort_values("Brecha", ascending=True)
+    colores = ["#c0392b" if b > 0 else "#2166ac" for b in df["Brecha"]]
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=df["Brecha"],
+        y=df["Materia"],
+        orientation="h",
+        marker_color=colores,
+        text=[f"{b:+.2f} pts  (d={d:.2f}, {e})"
+              for b, d, e in zip(df["Brecha"], df["Cohen_d"].abs(), df["Efecto"])],
+        textposition="outside",
+        textfont=dict(size=11),
+        cliponaxis=False,
+    ))
+    fig.add_vline(x=0, line_color="#888", line_dash="dash")
+    _layout_base(
+        fig,
+        title="Brecha en puntajes por área",
+        subtitle="Diferencia privado − público · positivo = privados superan · negativo = públicos superan",
+        height=360,
+        xaxis_title="Diferencia de medias (puntos)",
+        showlegend=False,
+    )
+    fig.update_layout(margin=dict(l=190, r=160, t=80, b=40))
+    return fig
+
+
+def generar_figura_brecha_estratos_stat():
+    """Gráfica que muestra cómo la brecha público-privado varía por estrato."""
+    res = cargar_resultados_estadisticos_p2()
+    if not res.get("disponible") or "brecha_estrato" not in res:
+        return go.Figure().update_layout(title="Sin datos estadísticos")
+
+    df = res["brecha_estrato"]
+    colores = ["#2166ac" if b < 0 else "#c0392b" for b in df["Brecha"]]
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=df["Estrato"],
+        y=df["Brecha"],
+        marker_color=colores,
+        text=[f"{b:+.1f}" for b in df["Brecha"]],
+        textposition="outside",
+        textfont=dict(size=11),
+        cliponaxis=False,
+    ))
+    fig.add_hline(y=0, line_color="#888", line_dash="dash")
+    _layout_base(
+        fig,
+        title="Brecha educativa por estrato socioeconómico",
+        subtitle="Diferencia privado − público · azul = públicos superan · rojo = privados superan",
+        height=400,
+        xaxis_title="Estrato socioeconómico",
+        yaxis_title="Diferencia de medias (puntos)",
+        showlegend=False,
+    )
+    return fig
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MODELOS PREDICTIVOS P2
+# ─────────────────────────────────────────────────────────────────────────────
+
+_MODELS_P2_DIR = Path(__file__).resolve().parent.parent / "models" / "pregunta_2"
+_MLRUNS_P2_DIR = Path(__file__).resolve().parent.parent / "mlruns" / "pregunta_2"
+
+FEATURES_P2 = [
+    "cole_naturaleza",
+    "fami_estratovivienda",
+    "fami_educacionmadre",
+    "fami_educacionpadre",
+    "cole_area_ubicacion",
+    "cole_jornada",
+]
+
+# Targets de regresión disponibles: slug → etiqueta de display
+TARGETS_LABELS_P2 = {
+    "global":              "Puntaje Global",
+    "matematicas":         "Matemáticas",
+    "ingles":              "Inglés",
+    "lectura_critica":     "Lectura Crítica",
+    "c_naturales":         "Ciencias Naturales",
+    "sociales_ciudadanas": "Sociales y Ciudadanas",
+}
+
+OPCIONES_P2 = {
+    "cole_naturaleza": ["Público", "Privado"],
+    "fami_estratovivienda": [
+        "Estrato 1", "Estrato 2", "Estrato 3",
+        "Estrato 4", "Estrato 5", "Estrato 6", "Sin Estrato",
+    ],
+    "fami_educacionmadre": [
+        "Ninguno", "Primaria incompleta", "Primaria completa",
+        "Secundaria (Bachillerato) incompleta", "Secundaria (Bachillerato) completa",
+        "Tecnica o tecnologica incompleta", "Tecnica o tecnologica completa",
+        "Educacion profesional incompleta", "Educacion profesional completa",
+        "Postgrado", "No sabe", "No Aplica",
+    ],
+    "fami_educacionpadre": [
+        "Ninguno", "Primaria incompleta", "Primaria completa",
+        "Secundaria (Bachillerato) incompleta", "Secundaria (Bachillerato) completa",
+        "Tecnica o tecnologica incompleta", "Tecnica o tecnologica completa",
+        "Educacion profesional incompleta", "Educacion profesional completa",
+        "Postgrado", "No sabe", "No Aplica",
+    ],
+    "cole_area_ubicacion": ["RURAL", "URBANO"],
+    "cole_jornada": ["MANANA", "TARDE", "NOCHE", "COMPLETA", "SABATINA", "UNICA"],
+}
+
+
+def obtener_mlflow_info_p2():
+    env_uri = os.getenv("MLFLOW_TRACKING_URI")
+    tracking_uri = env_uri if env_uri else _MLRUNS_P2_DIR.as_uri()
+    return {
+        "tracking_uri": tracking_uri,
+        "ui_url": os.getenv("MLFLOW_UI_URL", "http://127.0.0.1:5000"),
+    }
+
+
+def cargar_resultados_mlflow_p2(max_runs=50):
+    try:
+        import mlflow
+        from mlflow.tracking import MlflowClient
+    except Exception as exc:
+        return pd.DataFrame(), f"MLflow no disponible: {exc}"
+
+    if not _MLRUNS_P2_DIR.exists():
+        return pd.DataFrame(), "No hay experimentos de P2. Ejecuta Analysis/entrenar_modelos_p2.py primero."
+
+    mlflow.set_tracking_uri(_MLRUNS_P2_DIR.as_uri())
+    client = MlflowClient()
+
+    rows = []
+    for exp_name in ["P2_publico_privado_regresion", "P2_publico_privado_clasificacion"]:
+        exp = client.get_experiment_by_name(exp_name)
+        if exp is None:
+            continue
+        for run in client.search_runs(
+            [exp.experiment_id],
+            order_by=["attributes.start_time DESC"],
+            max_results=max_runs,
+        ):
+            m = run.data.metrics
+            p = run.data.params
+            rows.append({
+                "task": run.data.tags.get("task", ""),
+                "run_name": run.info.run_name,
+                "layers": p.get("layers", ""),
+                "dropout": p.get("dropout", ""),
+                "learning_rate": p.get("learning_rate", ""),
+                "epochs_run": p.get("epochs_run", ""),
+                "batch_size": p.get("batch_size", ""),
+                "rmse": round(m["rmse"], 3) if "rmse" in m else None,
+                "mae": round(m["mae"], 3) if "mae" in m else None,
+                "r2": round(m["r2"], 4) if "r2" in m else None,
+                "accuracy": round(m["accuracy"], 4) if "accuracy" in m else None,
+                "precision": round(m["precision"], 4) if "precision" in m else None,
+                "recall": round(m["recall"], 4) if "recall" in m else None,
+                "f1": round(m["f1"], 4) if "f1" in m else None,
+                "run_id": run.info.run_id,
+            })
+
+    if not rows:
+        return pd.DataFrame(), "No se encontraron corridas en mlruns/pregunta_2."
+
+    return pd.DataFrame(rows), f"{len(rows)} corridas cargadas."
+
+
+def construir_figuras_mlflow_p2(df_runs):
+    if df_runs.empty:
+        return go.Figure(), go.Figure()
+
+    _SLUG_SHORT = {
+        "global": "Global", "matematicas": "Matem.", "ingles": "Inglés",
+        "lectura_critica": "Lectura", "c_naturales": "C.Nat.",
+        "sociales_ciudadanas": "Sociales",
+    }
+
+    def _shorten(run_name):
+        n = run_name
+        for pre in ["clf_bin_", "clf_", "reg_"]:
+            if n.startswith(pre):
+                n = n[len(pre):]
+                break
+        if "_mlp_" in n:
+            slug, arch = n.split("_mlp_", 1)
+            slug_s = _SLUG_SHORT.get(slug, slug[:7])
+            return f"{slug_s} / {arch.replace('_', '-')}"
+        return n.replace("_", "-")
+
+    reg = df_runs[df_runs["task"] == "regresion"].copy()
+    clf = df_runs[df_runs["task"] == "clasificacion_binaria"].copy()
+
+    fig_reg = go.Figure()
+    if not reg.empty:
+        short_labels = [_shorten(n) for n in reg["run_name"]]
+        best_pos = reg["rmse"].fillna(float("inf")).values.argmin()
+        best_label = short_labels[best_pos]
+        best_rmse = reg["rmse"].iloc[best_pos]
+
+        for col, color, name in [("rmse", "#b2182b", "RMSE"), ("mae", "#2166ac", "MAE")]:
+            vals = reg[col].fillna(0)
+            marker_line_colors = [
+                "#222" if i == best_pos else "rgba(0,0,0,0)"
+                for i in range(len(vals))
+            ]
+            marker_line_widths = [2 if i == best_pos else 0 for i in range(len(vals))]
+            fig_reg.add_trace(go.Bar(
+                x=short_labels, y=vals,
+                name=name, marker_color=color,
+                marker_line_color=marker_line_colors,
+                marker_line_width=marker_line_widths,
+                customdata=list(zip(reg["run_name"], vals)),
+                hovertemplate=(
+                    "<b>%{customdata[0]}</b><br>"
+                    + name + ": %{customdata[1]:.3f}<extra></extra>"
+                ),
+                text=[f"{v:.3f}" if v else "" for v in vals],
+                textposition="outside",
+                textfont=dict(size=10),
+                cliponaxis=False,
+            ))
+
+        fig_reg.add_annotation(
+            x=best_label, y=best_rmse,
+            text="▼ mejor",
+            showarrow=False,
+            yanchor="bottom",
+            font=dict(size=11, color="#222"),
+            bgcolor="rgba(255,255,255,0.85)",
+            bordercolor="#888",
+            borderwidth=1,
+            borderpad=3,
+            yshift=6,
+        )
+
+        _layout_base(
+            fig_reg,
+            title="Regresión — error por configuración",
+            subtitle="RMSE y MAE · menor es mejor",
+            height=440,
+            yaxis_title="Error (puntos)",
+            showlegend=True,
+        )
+        fig_reg.update_layout(
+            barmode="group",
+            margin=dict(l=70, r=40, t=90, b=170),
+            legend=dict(orientation="h", y=-0.32, xanchor="center", x=0.5,
+                        font=dict(size=12), bgcolor="rgba(255,255,255,0.8)",
+                        bordercolor="rgba(200,200,200,0.5)", borderwidth=1),
+        )
+        fig_reg.update_xaxes(tickangle=-40, tickfont=dict(size=10))
+
+    fig_clf = go.Figure()
+    if not clf.empty:
+        short_labels_clf = [_shorten(n) for n in clf["run_name"]]
+        for col, color, name in [
+            ("accuracy",  "#2166ac", "Accuracy"),
+            ("precision", "#74add1", "Precisión"),
+            ("recall",    "#d6604d", "Recall"),
+            ("f1",        "#b2182b", "F1-Score"),
+        ]:
+            fig_clf.add_trace(go.Bar(
+                x=short_labels_clf, y=clf[col].fillna(0),
+                name=name, marker_color=color,
+                customdata=list(zip(clf["run_name"], clf[col].fillna(0))),
+                hovertemplate=(
+                    "<b>%{customdata[0]}</b><br>"
+                    + name + ": %{customdata[1]:.3f}<extra></extra>"
+                ),
+                text=[f"{v:.3f}" if v else "" for v in clf[col]],
+                textposition="outside",
+                textfont=dict(size=10),
+                cliponaxis=False,
+            ))
+        _layout_base(
+            fig_clf,
+            title="Clasificación binaria — métricas por configuración",
+            subtitle="Accuracy, Precisión, Recall y F1-Score · mayor es mejor",
+            height=440,
+            showlegend=True,
+        )
+        fig_clf.update_layout(
+            barmode="group",
+            yaxis=dict(title="Puntuación", range=[0, 1.25]),
+            margin=dict(l=70, r=40, t=90, b=170),
+            legend=dict(orientation="h", y=-0.32, xanchor="center", x=0.5,
+                        font=dict(size=12), bgcolor="rgba(255,255,255,0.8)",
+                        bordercolor="rgba(200,200,200,0.5)", borderwidth=1),
+        )
+        fig_clf.update_xaxes(tickangle=-40, tickfont=dict(size=10))
+
+    return fig_reg, fig_clf
+
+
+_MODELOS_CACHE = {}
+
+
+def _cargar_bundle(model_dir: Path):
+    """Carga model.keras + preprocessor.pkl + metadata.json desde model_dir."""
+    try:
+        import tensorflow as tf
+        import joblib
+    except Exception as exc:
+        return None, str(exc)
+    try:
+        bundle = {
+            "model":       tf.keras.models.load_model(str(model_dir / "model.keras")),
+            "preprocessor": joblib.load(str(model_dir / "preprocessor.pkl")),
+            "metadata":    json.load(open(str(model_dir / "metadata.json"), encoding="utf-8")),
+        }
+        return bundle, None
+    except Exception as exc:
+        return None, str(exc)
+
+
+def cargar_modelos_p2():
+    """Carga (con caché de proceso) los 6 modelos de regresión y el de clasificación."""
+    global _MODELOS_CACHE
+    if _MODELOS_CACHE:
+        return _MODELOS_CACHE
+
+    artefactos = {"disponible": True, "error": None, "regresion": {}}
+
+    # 6 modelos de regresión
+    for slug in TARGETS_LABELS_P2:
+        model_dir = _MODELS_P2_DIR / "regresion" / slug / "best"
+        if not (model_dir / "model.keras").exists():
+            continue
+        bundle, err = _cargar_bundle(model_dir)
+        if bundle:
+            artefactos["regresion"][slug] = bundle
+        elif not artefactos["error"]:
+            artefactos["error"] = err
+
+    # Modelo de clasificación
+    clf_dir = _MODELS_P2_DIR / "clasificacion_binaria" / "best"
+    if (clf_dir / "model.keras").exists():
+        bundle, err = _cargar_bundle(clf_dir)
+        artefactos["clasificacion_binaria"] = bundle
+        if err and not artefactos["error"]:
+            artefactos["error"] = err
+    else:
+        artefactos["clasificacion_binaria"] = None
+
+    if not artefactos["regresion"] and artefactos["clasificacion_binaria"] is None:
+        artefactos["disponible"] = False
+
+    _MODELOS_CACHE = artefactos
+    return artefactos
+
+
+def predecir_escenarios_p2(valores_a, valores_b, target_slug: str = "global"):
+    artefactos = cargar_modelos_p2()
+    if not artefactos.get("disponible"):
+        return None, None, go.Figure(), go.Figure(), artefactos.get("error", "Modelos no disponibles")
+
+    reg_dict = artefactos.get("regresion", {})
+    clf     = artefactos.get("clasificacion_binaria")
+
+    reg = reg_dict.get(target_slug)
+    if reg is None and reg_dict:
+        reg = next(iter(reg_dict.values()))  # fallback al primer disponible
+
+    if reg is None or clf is None:
+        return None, None, go.Figure(), go.Figure(), (
+            "No se encontraron los modelos en models/pregunta_2/. "
+            "Ejecuta Analysis/entrenar_modelos_p2.py primero."
+        )
+
+    target_label = TARGETS_LABELS_P2.get(target_slug, target_slug)
+
+    def _to_dense(m):
+        return m.toarray() if hasattr(m, "toarray") else m
+
+    def _make_row(bundle, valores):
+        # Builds DataFrame with the exact columns the model was trained on.
+        # Features not in `valores` get NaN → SimpleImputer fills with training mode.
+        cols = bundle["metadata"]["feature_columns"]
+        return pd.DataFrame([{col: valores.get(col, np.nan) for col in cols}], columns=cols)
+
+    def _predecir_una(valores):
+        X_reg = _to_dense(reg["preprocessor"].transform(_make_row(reg, valores)))
+        puntaje = float(reg["model"].predict(X_reg, verbose=0).flatten()[0])
+        puntaje = max(0.0, min(500.0, puntaje))
+
+        X_clf = _to_dense(clf["preprocessor"].transform(_make_row(clf, valores)))
+        proba_bajo = float(clf["model"].predict(X_clf, verbose=0).flatten()[0])
+        proba_bajo = max(0.0, min(1.0, proba_bajo))
+
+        return {"puntaje": round(puntaje, 1), "proba_bajo": round(proba_bajo, 4)}
+
+    try:
+        pred_a = _predecir_una(valores_a)
+        pred_b = _predecir_una(valores_b)
+    except Exception as exc:
+        return None, None, go.Figure(), go.Figure(), f"Error al predecir: {exc}"
+
+    labels = ["Escenario A", "Escenario B"]
+    puntajes = [pred_a["puntaje"], pred_b["puntaje"]]
+    colores_sim = ["#b2182b", "#2166ac"]
+
+    fig_reg = go.Figure()
+    fig_reg.add_trace(go.Bar(
+        x=labels, y=puntajes, marker_color=colores_sim,
+        text=[f"{p:.1f} pts" for p in puntajes], textposition="outside",
+        textfont=dict(size=13, color="#222"),
+        width=0.4,
+        cliponaxis=False,
+    ))
+    fig_reg.add_hline(y=250, line_dash="dash", line_color="#888")
+    fig_reg.add_annotation(
+        x=0.99, xref="paper", y=250, yref="y",
+        text="Umbral mínimo (250 pts)", showarrow=False,
+        xanchor="right", yanchor="bottom",
+        font=dict(size=11, color="#666"),
+    )
+    _layout_base(
+        fig_reg,
+        title=f"Puntaje predicho — {target_label}",
+        subtitle="Escenario A (rojo) vs Escenario B (azul)",
+        height=380,
+        yaxis_title=target_label,
+        showlegend=False,
+    )
+    fig_reg.update_layout(
+        yaxis=dict(range=[0, 560 if target_slug == "global" else 120]),
+        margin=dict(l=70, r=40, t=90, b=60),
+    )
+
+    probas_pct = [pred_a["proba_bajo"] * 100, pred_b["proba_bajo"] * 100]
+
+    fig_clf = go.Figure()
+    fig_clf.add_trace(go.Bar(
+        x=labels, y=probas_pct, marker_color=colores_sim,
+        text=[f"{p:.1f}%" for p in probas_pct], textposition="outside",
+        textfont=dict(size=13, color="#222"),
+        width=0.4,
+        cliponaxis=False,
+    ))
+    fig_clf.add_hline(y=50, line_dash="dash", line_color="#888")
+    fig_clf.add_annotation(
+        x=0.99, xref="paper", y=50, yref="y",
+        text="Umbral 50%", showarrow=False,
+        xanchor="right", yanchor="bottom",
+        font=dict(size=11, color="#666"),
+    )
+    _layout_base(
+        fig_clf,
+        title="Riesgo de bajo rendimiento (Puntaje Global < 250)",
+        subtitle="Probabilidad estimada de quedar bajo el umbral departamental",
+        height=380,
+        yaxis_title="Probabilidad (%)",
+        showlegend=False,
+    )
+    fig_clf.update_layout(
+        yaxis=dict(range=[0, 120]),
+        margin=dict(l=70, r=40, t=90, b=60),
+    )
+
+    return pred_a, pred_b, fig_reg, fig_clf, ""
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# BRECHA AJUSTADA POR MATERIA (desde CSV precalculado)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_BRECHA_AJUSTADA_PATH = _STATS_DIR / "brecha_ajustada_por_materia.csv"
+
+
+def cargar_brecha_ajustada_p2():
+    if not _BRECHA_AJUSTADA_PATH.exists():
+        return None
+    try:
+        return pd.read_csv(str(_BRECHA_AJUSTADA_PATH))
+    except Exception:
+        return None
+
+
+def generar_figura_brecha_ajustada_p2():
+    """Heatmap-style bar: brecha ajustada promedio por target (promedio sobre estratos)."""
+    df = cargar_brecha_ajustada_p2()
+    if df is None:
+        return go.Figure().update_layout(title="Sin datos (ejecutar entrenar_modelos_p2.py)")
+
+    resumen = (df.groupby("slug")["brecha_ajustada"]
+               .mean()
+               .reset_index()
+               .rename(columns={"brecha_ajustada": "brecha_media"}))
+
+    # Orden por magnitud absoluta descendente
+    resumen["label"] = resumen["slug"].map(TARGETS_LABELS_P2)
+    resumen = resumen.sort_values("brecha_media", ascending=True)
+    colores = ["#c0392b" if b > 0 else "#2166ac" for b in resumen["brecha_media"]]
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=resumen["brecha_media"],
+        y=resumen["label"],
+        orientation="h",
+        marker_color=colores,
+        text=[f"{b:+.2f} pts" for b in resumen["brecha_media"]],
+        textposition="outside",
+        textfont=dict(size=11),
+        cliponaxis=False,
+    ))
+    fig.add_vline(x=0, line_color="#888", line_dash="dash")
+    _layout_base(
+        fig,
+        title="Brecha ajustada por materia — efecto neto del tipo de colegio",
+        subtitle="Predicción con perfil base fijo · controla por estrato y educación familiar",
+        height=360,
+        xaxis_title="Diferencia predicha en puntos (privado − público)",
+        showlegend=False,
+    )
+    fig.update_layout(margin=dict(l=185, r=140, t=80, b=40))
     return fig
