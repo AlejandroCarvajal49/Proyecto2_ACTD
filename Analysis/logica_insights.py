@@ -314,9 +314,10 @@ def obtener_figuras_eda(path="Data/saber11_Antioquia_clean.csv"):
                     x="municipio_display",
                     y="brecha_rural_urbana",
                     color="prioridad_alta",
-                    title="Mapa de brechas: municipios de bajo PIB con mayor disparidad rural-urbana",
+                    title="Municipios de bajo PIB<br>con mayor disparidad rural-urbana",
                     labels={"municipio_display": "Municipio", "brecha_rural_urbana": "Brecha Rural-Urbana"},
                 )
+                figs["mapa_brechas_municipios_pib"].update_layout(margin=dict(t=90))
             else:
                 figs["mapa_brechas_municipios_pib"] = go.Figure()
         else:
@@ -351,9 +352,10 @@ def obtener_figuras_eda(path="Data/saber11_Antioquia_clean.csv"):
             adjusted_df,
             x="metric",
             y="gap_privado_menos_publico",
-            title="Impacto estimado publico vs privado (ajustado por estrato)",
+            title="Brecha pública vs privada<br>ajustada por estrato",
             labels={"metric": "Area", "gap_privado_menos_publico": "Brecha Ajustada (Privado - Publico)"},
         )
+        figs["impacto_estimado_publico_privado"].update_layout(margin=dict(t=90))
     else:
         figs["impacto_estimado_publico_privado"] = go.Figure()
 
@@ -376,7 +378,7 @@ def obtener_figuras_eda(path="Data/saber11_Antioquia_clean.csv"):
             x="ACCESO_INTERNET",
             y=col_ingles,
             color="ACCESO_INTERNET",
-            title="Mapa de brechas: Ingles vs acceso digital",
+            title="Brecha en Inglés según acceso digital",
             labels={"ACCESO_INTERNET": "Acceso Digital", col_ingles: "Puntaje Ingles"},
         )
 
@@ -429,7 +431,7 @@ def obtener_figuras_eda(path="Data/saber11_Antioquia_clean.csv"):
                 size="estudiantes",
                 color="potencial_mejora",
                 hover_name="municipio_display",
-                title="Impacto estimado: potencial de mejora en ingles al cerrar brecha digital",
+                title="Potencial de mejora en Inglés<br>al cerrar la brecha digital",
                 labels={
                     "share_sin_acceso": "% sin acceso digital",
                     "gap_ingles_digital": "Brecha Ingles (Con - Sin acceso)",
