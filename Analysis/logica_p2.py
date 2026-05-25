@@ -720,20 +720,46 @@ def construir_figuras_mlflow_p2(df_runs):
     fig_reg = go.Figure()
     if not reg.empty:
         short_labels = [_shorten(n) for n in reg["run_name"]]
+        best_pos = reg["rmse"].fillna(float("inf")).values.argmin()
+        best_label = short_labels[best_pos]
+        best_rmse = reg["rmse"].iloc[best_pos]
+
         for col, color, name in [("rmse", "#b2182b", "RMSE"), ("mae", "#2166ac", "MAE")]:
+            vals = reg[col].fillna(0)
+            marker_line_colors = [
+                "#222" if i == best_pos else "rgba(0,0,0,0)"
+                for i in range(len(vals))
+            ]
+            marker_line_widths = [2 if i == best_pos else 0 for i in range(len(vals))]
             fig_reg.add_trace(go.Bar(
-                x=short_labels, y=reg[col].fillna(0),
+                x=short_labels, y=vals,
                 name=name, marker_color=color,
-                customdata=list(zip(reg["run_name"], reg[col].fillna(0))),
+                marker_line_color=marker_line_colors,
+                marker_line_width=marker_line_widths,
+                customdata=list(zip(reg["run_name"], vals)),
                 hovertemplate=(
                     "<b>%{customdata[0]}</b><br>"
                     + name + ": %{customdata[1]:.3f}<extra></extra>"
                 ),
-                text=[f"{v:.3f}" if v else "" for v in reg[col]],
+                text=[f"{v:.3f}" if v else "" for v in vals],
                 textposition="outside",
                 textfont=dict(size=10),
                 cliponaxis=False,
             ))
+
+        fig_reg.add_annotation(
+            x=best_label, y=best_rmse,
+            text="▼ mejor",
+            showarrow=False,
+            yanchor="bottom",
+            font=dict(size=11, color="#222"),
+            bgcolor="rgba(255,255,255,0.85)",
+            bordercolor="#888",
+            borderwidth=1,
+            borderpad=3,
+            yshift=6,
+        )
+
         _layout_base(
             fig_reg,
             title="Regresión — error por configuración",

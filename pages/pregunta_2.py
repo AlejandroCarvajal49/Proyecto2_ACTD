@@ -451,11 +451,23 @@ entradas, el modelo permite cuantificar el efecto neto del tipo de colegio contr
 # ── CALLBACKS LABORATORIO MLflow ───────────────────────────────────────────
 
 def _arch_short(name):
-    for pre in ["clf_bin_", "clf_", "reg_"]:
+    # strip known prefixes: p2_clf_clf_, p2_clf_, clf_bin_, clf_, reg_
+    for pre in ["p2_clf_clf_", "p2_clf_", "clf_bin_", "clf_", "reg_"]:
         if name.startswith(pre):
             name = name[len(pre):]
             break
+    # regression slug: global_mlp_64_32 → 64_32
+    if "_mlp_" in name:
+        name = name.split("_mlp_", 1)[1]
     return name.replace("_", "-")
+
+
+def _modelo_tipo(name):
+    if name.startswith("p2_clf_") or name.startswith("clf_bin_") or name.startswith("clf_"):
+        return "Clasificación binaria"
+    if name.startswith("reg_"):
+        return "Regresión"
+    return ""
 
 
 def _tabla_top3_clf(clf_df):
@@ -463,30 +475,35 @@ def _tabla_top3_clf(clf_df):
         return html.P("No hay datos de clasificación.", className="text-muted p-3")
 
     top3 = clf_df.nlargest(3, "f1").reset_index(drop=True)
-    rank_colors = ["#b8860b", "#777", "#7b4f2e"]
-    rank_labels = ["#1", "#2", "#3"]
+    rank_badge_style = {
+        "background": "#888", "color": "white",
+        "padding": "2px 7px", "borderRadius": "4px",
+        "fontWeight": "bold", "fontSize": "11px",
+    }
 
     header = html.Thead(html.Tr([
-        html.Th("#", style={"width": "36px"}),
-        html.Th("Arquitectura"),
-        html.Th("F1", style={"color": "#b2182b"}),
-        html.Th("Accuracy"),
-        html.Th("Precisión"),
-        html.Th("Recall"),
-        html.Th("Épocas"),
+        html.Th("#",          style={"width": "36px", "whiteSpace": "nowrap"}),
+        html.Th("Tipo · Arq.", style={"minWidth": "140px"}),
+        html.Th("F1",         style={"color": "#b2182b", "whiteSpace": "nowrap"}),
+        html.Th("Acc.",       style={"whiteSpace": "nowrap"}),
+        html.Th("Prec.",      style={"whiteSpace": "nowrap"}),
+        html.Th("Recall",     style={"whiteSpace": "nowrap"}),
+        html.Th("Ep.",        style={"whiteSpace": "nowrap"}),
     ], style={"fontSize": "12px", "background": "#f5f5f5"}))
 
     rows = []
     for i, row in top3.iterrows():
         epochs = str(int(row["epochs_run"])) if pd.notna(row.get("epochs_run")) else "—"
+        tipo = _modelo_tipo(row["run_name"])
+        arch = _arch_short(row["run_name"])
         rows.append(html.Tr([
-            html.Td(html.Span(rank_labels[i], style={
-                "background": rank_colors[i], "color": "white",
-                "padding": "2px 7px", "borderRadius": "4px",
-                "fontWeight": "bold", "fontSize": "11px",
-            })),
-            html.Td(html.Code(_arch_short(row["run_name"]), style={"fontSize": "12px"})),
-            html.Td(f"{row['f1']:.4f}", style={"fontWeight": "bold", "color": "#b2182b"}),
+            html.Td(html.Span(f"#{i+1}", style=rank_badge_style)),
+            html.Td([
+                html.Span(tipo, style={"fontSize": "10px", "color": "#888",
+                                       "display": "block", "marginBottom": "1px"}),
+                html.Code(arch, style={"fontSize": "12px"}),
+            ], style={"textAlign": "left", "paddingLeft": "10px"}),
+            html.Td(f"{row['f1']:.4f}",        style={"fontWeight": "bold", "color": "#b2182b"}),
             html.Td(f"{row['accuracy']:.4f}"),
             html.Td(f"{row['precision']:.4f}"),
             html.Td(f"{row['recall']:.4f}"),
@@ -499,14 +516,19 @@ def _tabla_top3_clf(clf_df):
                       "marginBottom": "4px"}),
         html.P("Ordenado por F1-Score · mayor es mejor",
                style={"fontSize": "12px", "color": "#666", "marginBottom": "10px"}),
-        dbc.Table(
-            [header, html.Tbody(rows)],
-            bordered=True, hover=True, size="sm",
-            style={"fontSize": "13px", "textAlign": "center", "marginBottom": "0"},
+        html.Div(
+            dbc.Table(
+                [header, html.Tbody(rows)],
+                bordered=True, hover=True, size="sm", responsive=True,
+                style={"fontSize": "13px", "textAlign": "center", "marginBottom": "0",
+                       "width": "100%"},
+            ),
+            style={"overflowX": "auto"},
         ),
     ], style={
         "padding": "16px", "background": "white", "borderRadius": "8px",
-        "boxShadow": "0 1px 4px rgba(0,0,0,0.12)", "marginTop": "8px", "height": "100%",
+        "boxShadow": "0 1px 4px rgba(0,0,0,0.12)", "marginTop": "8px",
+        "height": "100%", "overflowX": "hidden",
     })
 
 
@@ -536,20 +558,30 @@ def cargar_lab_mlflow(n_clicks):
     partes = []
     if not reg.empty:
         best = reg.loc[reg["rmse"].idxmin()]
+        rmse, mae, r2 = best["rmse"], best["mae"], best["r2"]
         partes.append(
-            f"Mejor regresión: '{_arch_short(best['run_name'])}' con RMSE={best['rmse']:.3f}, "
-            f"MAE={best['mae']:.3f}, R²={best['r2']:.4f}."
+            f"Mejor configuración de regresión (arquitectura {_arch_short(best['run_name'])}): "
+            f"Error Cuadrático Medio (RMSE) = {rmse:.1f} pts — en promedio el modelo se aleja "
+            f"{rmse:.1f} puntos del puntaje real, penalizando más los errores grandes. "
+            f"Error Absoluto Medio (MAE) = {mae:.1f} pts — distancia típica sin penalización extra. "
+            f"R² = {r2:.2f}, es decir el modelo explica el {r2*100:.0f}% de la variación "
+            f"en los puntajes a partir de las características del estudiante y su colegio."
         )
     if not clf.empty:
         best = clf.loc[clf["f1"].idxmax()]
+        acc, rec, prec, f1 = best["accuracy"], best["recall"], best["precision"], best["f1"]
         partes.append(
-            f"Mejor clasificación: '{_arch_short(best['run_name'])}' con F1={best['f1']:.4f}, "
-            f"Accuracy={best['accuracy']:.4f}, Precisión={best['precision']:.4f}, "
-            f"Recall={best['recall']:.4f}."
+            f"Mejor configuración de clasificación (arquitectura {_arch_short(best['run_name'])}): "
+            f"clasifica correctamente al {acc*100:.1f}% de los estudiantes (Accuracy). "
+            f"De cada 100 estudiantes en riesgo real de bajo rendimiento, el modelo detecta {rec*100:.0f} "
+            f"(Recall = {rec:.2f}) — métrica clave para no dejar pasar casos que necesitan atención. "
+            f"Cuando predice riesgo, acierta el {prec*100:.1f}% de las veces (Precisión). "
+            f"El F1-Score de {f1:.2f} resume el balance entre ambas."
         )
     partes.append(
-        "El modelo incluye cole_naturaleza y fami_estratovivienda como entradas, "
-        "lo que permite cuantificar la brecha público-privado controlando por nivel socioeconómico."
+        "Ambos modelos usan como entradas el tipo de colegio y el estrato socioeconómico, "
+        "entre otras variables, lo que permite estimar cuánto del resultado se explica "
+        "por el entorno del estudiante y no solo por sus capacidades individuales."
     )
     interpretacion = " ".join(partes)
 
