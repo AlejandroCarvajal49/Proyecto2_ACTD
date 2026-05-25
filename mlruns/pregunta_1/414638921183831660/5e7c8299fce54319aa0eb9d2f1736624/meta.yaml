@@ -1,0 +1,14 @@
+artifact_uri: file:///C:/Users/santi/OneDrive/Documents/Andes/Octavo%20Semestre/Analitica/Proyecto2_ACTD/mlruns/pregunta_1/414638921183831660/5e7c8299fce54319aa0eb9d2f1736624/artifacts
+end_time: 1779667675713
+entry_point_name: ''
+experiment_id: '414638921183831660'
+lifecycle_stage: active
+run_id: 5e7c8299fce54319aa0eb9d2f1736624
+run_name: p1_custom_reg_1
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1779667671547
+status: 3
+tags: []
+user_id: santi

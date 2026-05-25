@@ -1,0 +1,12 @@
+{
+  "name": "mlp_reg_mse_base",
+  "layers": "128-64-32",
+  "activation": "relu",
+  "dropout": 0.2,
+  "l2": 0.0001,
+  "optimizer": "adam",
+  "learning_rate": 0.001,
+  "loss": "mse",
+  "epochs": 30,
+  "batch_size": 512
+}

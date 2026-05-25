@@ -1,0 +1,12 @@
+{
+  "name": "mlp_bin_deep",
+  "layers": "128-64-32-16",
+  "activation": "elu",
+  "dropout": 0.35,
+  "l2": 0.0001,
+  "optimizer": "rmsprop",
+  "learning_rate": 0.0005,
+  "loss": "binary_crossentropy",
+  "epochs": 35,
+  "batch_size": 256
+}

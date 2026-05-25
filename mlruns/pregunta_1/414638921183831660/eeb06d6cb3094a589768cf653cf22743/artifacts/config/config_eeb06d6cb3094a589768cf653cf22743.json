@@ -1,0 +1,12 @@
+{
+  "name": "mlp_bin_shallow",
+  "layers": "64-32",
+  "activation": "relu",
+  "dropout": 0.2,
+  "l2": 0.001,
+  "optimizer": "adam",
+  "learning_rate": 0.001,
+  "loss": "binary_crossentropy",
+  "epochs": 25,
+  "batch_size": 512
+}

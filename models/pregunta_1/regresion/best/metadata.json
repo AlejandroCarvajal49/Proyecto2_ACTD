@@ -1,0 +1,33 @@
+{
+  "task": "regresion",
+  "config": {
+    "name": "mlp_reg_mse_base",
+    "layers": "128-64-32",
+    "activation": "relu",
+    "dropout": 0.2,
+    "l2": 0.0001,
+    "optimizer": "adam",
+    "learning_rate": 0.001,
+    "loss": "mse",
+    "epochs": 30,
+    "batch_size": 512
+  },
+  "metrics": {
+    "rmse": 40.25509744872639,
+    "mae": 32.19666886000636,
+    "r2": 0.3346830355491778
+  },
+  "feature_columns": [
+    "PIB miles de millones",
+    "PIB per capita",
+    "Area",
+    "fami_estratovivienda",
+    "fami_educacionpadre",
+    "fami_educacionmadre",
+    "cole_naturaleza",
+    "cole_jornada",
+    "cole_genero"
+  ],
+  "umbral_p25": 213.0,
+  "trained_at": "2026-05-24 23:48:19"
+}

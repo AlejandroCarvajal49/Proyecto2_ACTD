@@ -1,0 +1,12 @@
+{
+  "name": "mlp_reg_mae_shallow",
+  "layers": "64-32",
+  "activation": "relu",
+  "dropout": 0.1,
+  "l2": 0.0,
+  "optimizer": "adam",
+  "learning_rate": 0.002,
+  "loss": "mae",
+  "epochs": 25,
+  "batch_size": 512
+}

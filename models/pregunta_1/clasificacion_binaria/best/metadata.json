@@ -1,0 +1,33 @@
+{
+  "task": "clasificacion_binaria",
+  "config": {
+    "name": "mlp_bin_shallow",
+    "layers": "64-32",
+    "activation": "relu",
+    "dropout": 0.2,
+    "l2": 0.001,
+    "optimizer": "adam",
+    "learning_rate": 0.001,
+    "loss": "binary_crossentropy",
+    "epochs": 25,
+    "batch_size": 512
+  },
+  "metrics": {
+    "accuracy": 0.7320053120849933,
+    "f1": 0.5343045772881424,
+    "roc_auc": 0.764995686129865
+  },
+  "feature_columns": [
+    "PIB miles de millones",
+    "PIB per capita",
+    "Area",
+    "fami_estratovivienda",
+    "fami_educacionpadre",
+    "fami_educacionmadre",
+    "cole_naturaleza",
+    "cole_jornada",
+    "cole_genero"
+  ],
+  "umbral_p25": 213.0,
+  "trained_at": "2026-05-24 23:50:07"
+}
