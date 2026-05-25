@@ -2,6 +2,7 @@ import dash
 from dash import html, dcc, callback, Input, Output, State, dash_table, no_update
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
+import pandas as pd
 
 from Analysis.logica_p2 import (
     cargar_datos, filtrar_datos, calcular_brechas,
@@ -209,8 +210,7 @@ entradas, el modelo permite cuantificar el efecto neto del tipo de colegio contr
             dbc.Row([
                 dbc.Col(dcc.Graph(id="p2-grafica-reg-mlflow", figure=go.Figure(),
                                   config=_graph_cfg("p2_mlflow_regresion")), md=6),
-                dbc.Col(dcc.Graph(id="p2-grafica-clf-mlflow", figure=go.Figure(),
-                                  config=_graph_cfg("p2_mlflow_clasificacion")), md=6),
+                dbc.Col(html.Div(id="p2-top3-clf"), md=6),
             ], className="mt-3"),
 
             dbc.Card([
@@ -450,10 +450,70 @@ entradas, el modelo permite cuantificar el efecto neto del tipo de colegio contr
 
 # ── CALLBACKS LABORATORIO MLflow ───────────────────────────────────────────
 
+def _arch_short(name):
+    for pre in ["clf_bin_", "clf_", "reg_"]:
+        if name.startswith(pre):
+            name = name[len(pre):]
+            break
+    return name.replace("_", "-")
+
+
+def _tabla_top3_clf(clf_df):
+    if clf_df.empty:
+        return html.P("No hay datos de clasificación.", className="text-muted p-3")
+
+    top3 = clf_df.nlargest(3, "f1").reset_index(drop=True)
+    rank_colors = ["#b8860b", "#777", "#7b4f2e"]
+    rank_labels = ["#1", "#2", "#3"]
+
+    header = html.Thead(html.Tr([
+        html.Th("#", style={"width": "36px"}),
+        html.Th("Arquitectura"),
+        html.Th("F1", style={"color": "#b2182b"}),
+        html.Th("Accuracy"),
+        html.Th("Precisión"),
+        html.Th("Recall"),
+        html.Th("Épocas"),
+    ], style={"fontSize": "12px", "background": "#f5f5f5"}))
+
+    rows = []
+    for i, row in top3.iterrows():
+        epochs = str(int(row["epochs_run"])) if pd.notna(row.get("epochs_run")) else "—"
+        rows.append(html.Tr([
+            html.Td(html.Span(rank_labels[i], style={
+                "background": rank_colors[i], "color": "white",
+                "padding": "2px 7px", "borderRadius": "4px",
+                "fontWeight": "bold", "fontSize": "11px",
+            })),
+            html.Td(html.Code(_arch_short(row["run_name"]), style={"fontSize": "12px"})),
+            html.Td(f"{row['f1']:.4f}", style={"fontWeight": "bold", "color": "#b2182b"}),
+            html.Td(f"{row['accuracy']:.4f}"),
+            html.Td(f"{row['precision']:.4f}"),
+            html.Td(f"{row['recall']:.4f}"),
+            html.Td(epochs),
+        ]))
+
+    return html.Div([
+        html.P("Top 3 configuraciones — Clasificación binaria",
+               style={"fontWeight": "600", "fontSize": "14px", "color": "#222",
+                      "marginBottom": "4px"}),
+        html.P("Ordenado por F1-Score · mayor es mejor",
+               style={"fontSize": "12px", "color": "#666", "marginBottom": "10px"}),
+        dbc.Table(
+            [header, html.Tbody(rows)],
+            bordered=True, hover=True, size="sm",
+            style={"fontSize": "13px", "textAlign": "center", "marginBottom": "0"},
+        ),
+    ], style={
+        "padding": "16px", "background": "white", "borderRadius": "8px",
+        "boxShadow": "0 1px 4px rgba(0,0,0,0.12)", "marginTop": "8px", "height": "100%",
+    })
+
+
 @callback(
     Output("p2-tabla-modelos", "data"),
     Output("p2-grafica-reg-mlflow", "figure"),
-    Output("p2-grafica-clf-mlflow", "figure"),
+    Output("p2-top3-clf", "children"),
     Output("p2-texto-mlflow", "children"),
     Output("p2-texto-interpretacion", "children"),
     Input("p2-btn-cargar-mlflow", "n_clicks"),
@@ -461,14 +521,14 @@ entradas, el modelo permite cuantificar el efecto neto del tipo de colegio contr
 )
 def cargar_lab_mlflow(n_clicks):
     if not n_clicks:
-        return [], go.Figure(), go.Figure(), "", ""
+        return [], go.Figure(), None, "", ""
 
     df_runs, mensaje = cargar_resultados_mlflow_p2()
 
     if df_runs.empty:
-        return [], go.Figure(), go.Figure(), mensaje, ""
+        return [], go.Figure(), None, mensaje, ""
 
-    fig_reg, fig_clf = construir_figuras_mlflow_p2(df_runs)
+    fig_reg, _ = construir_figuras_mlflow_p2(df_runs)
 
     reg = df_runs[df_runs["task"] == "regresion"].dropna(subset=["rmse"])
     clf = df_runs[df_runs["task"] == "clasificacion_binaria"].dropna(subset=["f1"])
@@ -477,14 +537,14 @@ def cargar_lab_mlflow(n_clicks):
     if not reg.empty:
         best = reg.loc[reg["rmse"].idxmin()]
         partes.append(
-            f"Mejor regresión: config '{best['run_name']}' con RMSE={best['rmse']:.3f}, "
+            f"Mejor regresión: '{_arch_short(best['run_name'])}' con RMSE={best['rmse']:.3f}, "
             f"MAE={best['mae']:.3f}, R²={best['r2']:.4f}."
         )
     if not clf.empty:
         best = clf.loc[clf["f1"].idxmax()]
         partes.append(
-            f"Mejor clasificación: config '{best['run_name']}' con F1={best['f1']:.4f}, "
-            f"Accuracy={best['accuracy']:.4f}, Precision={best['precision']:.4f}, "
+            f"Mejor clasificación: '{_arch_short(best['run_name'])}' con F1={best['f1']:.4f}, "
+            f"Accuracy={best['accuracy']:.4f}, Precisión={best['precision']:.4f}, "
             f"Recall={best['recall']:.4f}."
         )
     partes.append(
@@ -493,7 +553,7 @@ def cargar_lab_mlflow(n_clicks):
     )
     interpretacion = " ".join(partes)
 
-    return df_runs.to_dict("records"), fig_reg, fig_clf, mensaje, interpretacion
+    return df_runs.to_dict("records"), fig_reg, _tabla_top3_clf(clf), mensaje, interpretacion
 
 
 # ── CALLBACK SIMULADOR ─────────────────────────────────────────────────────

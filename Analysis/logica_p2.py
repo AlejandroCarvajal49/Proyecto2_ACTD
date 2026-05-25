@@ -737,7 +737,7 @@ def construir_figuras_mlflow_p2(df_runs):
         _layout_base(
             fig_reg,
             title="Regresión — error por configuración",
-            subtitle="RMSE (rojo) y MAE (azul) · menor es mejor · pasa el cursor para nombre completo",
+            subtitle="RMSE y MAE · menor es mejor",
             height=440,
             yaxis_title="Error (puntos)",
             showlegend=True,
