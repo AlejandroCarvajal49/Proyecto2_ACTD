@@ -40,7 +40,10 @@ COPY mlruns/   ./mlruns/
 # Linux es case-sensitive: el codigo de Q2 usa "data/" en minuscula mientras
 # el resto del repo usa "Data/" en mayuscula. En Windows no se nota porque
 # el filesystem es case-insensitive. Symlink para que ambos accesos funcionen.
-RUN ln -s Data data
+# Con paths absolutos + verificacion explicita para que el build falle si algo
+# sale mal (en vez de explotar en runtime).
+RUN ln -s /app/Data /app/data && \
+    ls -la /app/data/saber11_Antioquia_clean.csv
 
 # Variable de entorno para que TensorFlow no llene los logs con warnings
 ENV TF_CPP_MIN_LOG_LEVEL=2 \
